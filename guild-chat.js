@@ -288,11 +288,13 @@
     }
 
     function saveAuthTokens(result, uid) {
+      const idToken = result && (result.id_token || result.idToken);
+      const refreshToken = result && (result.refresh_token || result.refreshToken);
+      const expiresIn = result && (result.expires_in || result.expiresIn);
       if (
-        !result ||
-        typeof result.id_token !== "string" ||
-        typeof result.refresh_token !== "string" ||
-        !Number.isFinite(Number(result.expires_in))
+        typeof idToken !== "string" ||
+        typeof refreshToken !== "string" ||
+        !Number.isFinite(Number(expiresIn))
       ) {
         throw new Error("Firebase Authentication returned an incomplete token response.");
       }
@@ -304,11 +306,11 @@
 
       authSession = {
         uid: sessionUid,
-        refreshToken: result.refresh_token,
+        refreshToken,
       };
-      currentIdToken = result.id_token;
+      currentIdToken = idToken;
       idTokenExpiresAt =
-        Date.now() + Math.max(Number(result.expires_in), 1) * 1000;
+        Date.now() + Math.max(Number(expiresIn), 1) * 1000;
       user = { uid: sessionUid };
       writeValue(AUTH_STORAGE_KEY, authSession);
     }
