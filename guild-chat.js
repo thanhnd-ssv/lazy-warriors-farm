@@ -765,7 +765,9 @@
             idToken = await refreshAuthToken(true);
             continue;
           }
-          throw error;
+          throw new Error(
+            `${error.message} (lỗi khi ${databaseOperationLabel(method, path)})`,
+          );
         }
       }
       throw new Error("Firebase request could not be completed.");
@@ -785,6 +787,17 @@
 
     function databasePush(path, value) {
       return databaseRequest("POST", path, value);
+    }
+
+    function databaseOperationLabel(method, path) {
+      const segments = path.split("/");
+      if (segments[0] === "guildInvites") return "đọc mã mời";
+      if (segments[0] === "guilds" && segments[2] === "members") {
+        if (method === "PUT") return "tạo hồ sơ thành viên";
+        if (method === "PATCH") return "cập nhật avatar thành viên";
+        return "đọc hồ sơ thành viên";
+      }
+      return "truy cập dữ liệu chat";
     }
 
     function setNotice(element, message) {
