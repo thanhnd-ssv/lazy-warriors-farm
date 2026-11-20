@@ -126,7 +126,8 @@
         * { box-sizing: border-box; }
         .panel {
           display: flex; flex-direction: column; width: min(390px, calc(100vw - 24px));
-          height: min(620px, calc(100vh - 24px)); overflow: hidden;
+          height: min(620px, calc(100vh - 24px));
+          min-height: min(430px, calc(100vh - 24px)); overflow: hidden;
           color: #4d5d43; background: #eff8df;
           border: 3px solid #fffdf4; border-radius: 22px;
           box-shadow: 0 14px 38px #4e694a45, 0 3px 0 #b5d69e;
@@ -155,20 +156,36 @@
         .join, .chat { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 9px; padding: 12px; }
         .join[hidden], .chat[hidden] { display: none; }
         .join {
-          justify-content: center;
+          justify-content: center; overflow-y: auto;
+          padding: 18px;
           background:
-            radial-gradient(circle at 14% 18%, #fff 0 7px, transparent 8px),
-            radial-gradient(circle at 82% 26%, #fff 0 11px, transparent 12px),
-            linear-gradient(180deg, #dff2f4 0 46%, #d9edb7 47% 100%);
+            radial-gradient(circle at 88% 14%, #fff9c9 0 22px, transparent 23px),
+            radial-gradient(ellipse at 12% 100%, #92bd72 0 19%, transparent 20%),
+            radial-gradient(ellipse at 92% 104%, #a8cc7f 0 24%, transparent 25%),
+            linear-gradient(180deg, #d5edf0 0 38%, #e8f2d1 72%, #d5e7ad 100%);
         }
-        label { display: grid; gap: 5px; color: #65745b; font-size: 12px; font-weight: 700; }
+        .join-card {
+          display: flex; flex-direction: column; gap: 12px;
+          width: 100%; padding: 20px 17px 15px;
+          background: #fffdf4ed; border: 1px solid #fff;
+          border-radius: 20px; box-shadow: 0 8px 24px #647b4c24;
+        }
+        .join-intro { display: grid; gap: 3px; margin-bottom: 2px; text-align: center; }
+        .join-intro strong { color: #5e754d; font-size: 18px; }
+        .join-intro span { color: #89957b; font-size: 11px; }
+        .join label {
+          display: flex; flex-direction: column; width: 100%; gap: 5px;
+          color: #65745b; font-size: 11px; font-weight: 700;
+        }
         input {
-          width: 100%; min-height: 36px; padding: 7px 9px;
+          display: block; width: 100%; min-height: 40px; padding: 8px 11px;
           color: #4f6045; background: #fffef9; border: 1.5px solid #cbdba9;
-          border-radius: 11px; outline: none;
+          border-radius: 12px; outline: none;
         }
         input:focus { border-color: #92b66d; box-shadow: 0 0 0 3px #a4c87525; }
         .primary { color: #526945; background: #dceea7; border-color: #b7d486; font-weight: 800; }
+        .join-button, .retry { width: 100%; min-height: 38px; }
+        .retry { background: #fff; }
         .notice { min-height: 18px; color: #a96f58; font-size: 11px; overflow-wrap: anywhere; }
         .chat {
           position: relative;
@@ -176,21 +193,9 @@
           gap: 6px;
           padding: 8px 8px 7px;
           background:
-            radial-gradient(ellipse at 8% 96%, #86ad66 0 8%, transparent 8.5%),
-            radial-gradient(ellipse at 92% 94%, #86ad66 0 10%, transparent 10.5%),
-            linear-gradient(180deg, #dceee3 0 17%, #edf5cf 17% 56%, #d9e9a9 56% 100%);
-        }
-        .chat::before {
-          content: "☁  　       ☁";
-          position: absolute; z-index: -1; top: 10px; left: 12px;
-          color: #fffefa; font-size: 24px; letter-spacing: 18px;
-          opacity: .95; white-space: nowrap;
-        }
-        .chat::after {
-          content: "✿  ᴗ  ✿";
-          position: absolute; z-index: -1; right: 7px; bottom: 54px;
-          color: #fff; font-size: 16px;
-          text-shadow: 16px 12px #f7c6ba, -18px 34px #fff2a6, 36px 44px #b6d7a2;
+            linear-gradient(#fff2, #fff2),
+            url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcH3RLgxfasvnGYL7KnczA5dIhRG7yI-Y3zxEMrZ00Gw&s=10")
+              center center / cover no-repeat;
         }
         .messages {
           display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 7px;
@@ -221,7 +226,8 @@
           font-size: 16px;
         }
         .message.self .message-avatar { order: 2; }
-        .message-meta { display: flex; justify-content: space-between; gap: 8px; color: #859270; font-size: 9px; }
+        .message-meta { display: flex; justify-content: space-between; gap: 8px; min-width: 0; color: #859270; font-size: 9px; }
+        .message-author { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
         .message-meta time { flex: 0 0 auto; color: #9aa48e; }
         .message-text { margin: 2px 0 0; white-space: pre-wrap; }
         .unread {
@@ -275,15 +281,21 @@
         </header>
         <div class="content">
           <form class="join">
-            <label>Nickname
-              <input class="nickname" maxlength="24" autocomplete="nickname" required>
-            </label>
-            <label>Guild Invite Code
-              <input class="invite-code" maxlength="64" autocomplete="off" required>
-            </label>
-            <button type="submit" class="primary join-button">Join Guild</button>
-            <button type="button" class="retry">Kết nối lại</button>
-            <div class="join-notice notice" role="status"></div>
+            <div class="join-card">
+              <div class="join-intro">
+                <strong>Chào bạn! 🌼</strong>
+                <span>Nhập thông tin để vào trò chuyện cùng hội nhé.</span>
+              </div>
+              <label>Nickname
+                <input class="nickname" maxlength="24" autocomplete="nickname" required>
+              </label>
+              <label>Mã mời hội
+                <input class="invite-code" maxlength="64" autocomplete="off" required>
+              </label>
+              <button type="submit" class="primary join-button">Vào hội</button>
+              <button type="button" class="retry">Thử kết nối lại</button>
+              <div class="join-notice notice" role="status"></div>
+            </div>
           </form>
           <section class="chat" hidden>
             <ol class="messages" aria-live="polite" aria-label="Tin nhắn"></ol>
