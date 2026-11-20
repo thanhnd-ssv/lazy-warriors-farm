@@ -1,12 +1,9 @@
 // ==UserScript==
 // @name         Web Workflow Utility
 // @namespace    local.at-sp.notification-monitor
-// @version      2.78.1
+// @version      2.78.2
 // @description  Automates farm tasks, neighbor help, games, restaurant, ranch, and mythical beast actions.
 // @match        https://at-sp.ssvhue.work/*
-// @require      https://www.gstatic.com/firebasejs/13.4.0/firebase-app-compat.js
-// @require      https://www.gstatic.com/firebasejs/13.4.0/firebase-auth-compat.js
-// @require      https://www.gstatic.com/firebasejs/13.4.0/firebase-database-compat.js
 // @require      https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/guild-chat.js
 // @updateURL    https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.meta.js
 // @downloadURL  https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.user.js

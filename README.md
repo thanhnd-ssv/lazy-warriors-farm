@@ -32,9 +32,9 @@ Mã mời chỉ cho phép tham gia hội, không cấp quyền quản trị Fire
 1. Cài một trong hai bản ở trên và tải lại trang game.
 2. Mở bảng điều khiển, vào **Chung → Guild Chat**.
 3. Nhập nickname (2–24 ký tự) và mã mời, rồi bấm **Join Guild**.
-4. Thành viên khác làm tương tự trên trình duyệt/máy tính của họ. Chat tải tối đa 150 tin nhắn gần nhất, có số tin chưa đọc, âm thanh bật/tắt và tự kết nối lại.
+4. Thành viên khác làm tương tự trên trình duyệt/máy tính của họ. Chat tải tối đa 150 tin nhắn gần nhất, kiểm tra tin mới mỗi 3 giây, có số tin chưa đọc và âm thanh bật/tắt.
 
-Anonymous Authentication tạo UID riêng theo trình duyệt. Nếu đổi máy hoặc xóa dữ liệu trình duyệt, hãy tham gia lại bằng mã mời; UID ngắn cạnh nickname giúp phân biệt người trùng tên.
+Anonymous Authentication tạo UID riêng; Tampermonkey lưu phiên đăng nhập để giữ UID qua các lần tải lại. Nếu đổi máy hoặc xóa dữ liệu của userscript, hãy tham gia lại bằng mã mời; UID ngắn cạnh nickname giúp phân biệt người trùng tên.
 
 ## Giới hạn và bảo trì
 

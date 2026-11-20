@@ -3,12 +3,9 @@
 
   const FIREBASE_CONFIG = {
     apiKey: "AIzaSyBTy82Yu5YLGn8R2Tyufu2CV8E2E0-ze2A",
-    authDomain: "web-workflow-utility-chat.firebaseapp.com",
     databaseURL: "https://web-workflow-utility-chat-default-rtdb.firebaseio.com",
-    projectId: "web-workflow-utility-chat",
-    appId: "1:114790224911:web:ad0b9dd5c4d0c96c307f7a",
   };
-  const APP_NAME = "web-workflow-utility-guild-chat";
+  const AUTH_STORAGE_KEY = "web-workflow-utility.guild-chat.auth";
   const PROFILE_STORAGE_KEY = "web-workflow-utility.guild-chat.profile";
   const SOUND_STORAGE_KEY = "web-workflow-utility.guild-chat.sound";
   const MAX_HISTORY = 150;
@@ -16,10 +13,75 @@
   const MIN_NICKNAME_LENGTH = 2;
   const MAX_NICKNAME_LENGTH = 24;
   const MESSAGE_COOLDOWN_MS = 1_500;
+  const MESSAGE_POLL_INTERVAL_MS = 3_000;
+  const AUTH_TOKEN_REFRESH_BUFFER_MS = 60_000;
+  const AUTH_SIGN_UP_URL =
+    `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${FIREBASE_CONFIG.apiKey}`;
+  const AUTH_REFRESH_URL =
+    `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_CONFIG.apiKey}`;
 
-  function createFirebaseApp(firebase) {
-    const existingApp = firebase.apps.find((app) => app.name === APP_NAME);
-    return existingApp || firebase.initializeApp(FIREBASE_CONFIG, APP_NAME);
+  function requestJson(request, method, url, data, headers) {
+    return new Promise((resolve, reject) => {
+      try {
+        request({
+          method,
+          url,
+          timeout: 20_000,
+          headers:
+            headers ||
+            (data === undefined ? {} : { "Content-Type": "application/json" }),
+          data:
+            data === undefined
+              ? undefined
+              : typeof data === "string"
+                ? data
+                : JSON.stringify(data),
+          onload(response) {
+            const status = Number(response.status) || 0;
+            const responseText = response.responseText || "";
+            let result = null;
+            if (responseText) {
+              try {
+                result = JSON.parse(responseText);
+              } catch (error) {
+                reject(new Error("Firebase returned an invalid JSON response."));
+                return;
+              }
+            }
+
+            if (status < 200 || status >= 300) {
+              const details = result && result.error;
+              const message =
+                typeof details === "string"
+                  ? details
+                  : details && (details.message || details.status) ||
+                    (typeof result === "string" ? result : null);
+              const requestError = new Error(
+                message || `Firebase request failed (HTTP ${status}).`,
+              );
+              requestError.status = status;
+              requestError.code =
+                details && (details.message || details.status);
+              reject(requestError);
+              return;
+            }
+
+            resolve(result);
+          },
+          onerror() {
+            reject(new Error("Tampermonkey could not reach Firebase."));
+          },
+          ontimeout() {
+            reject(new Error("Firebase request timed out."));
+          },
+          onabort() {
+            reject(new Error("Firebase request was aborted."));
+          },
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
   }
 
   function createElement(tag, className, text) {
@@ -29,15 +91,10 @@
     return element;
   }
 
-  function mount({ container, getValue, setValue }) {
-    const firebase = global.firebase;
-    if (!firebase || !firebase.auth || !firebase.database) {
-      throw new Error("Firebase SDK chưa được tải.");
+  function mount({ container, getValue, setValue, request }) {
+    if (typeof request !== "function") {
+      throw new Error("Tampermonkey request API chưa được cấu hình.");
     }
-
-    const app = createFirebaseApp(firebase);
-    const auth = app.auth();
-    const database = app.database();
     const launchButton = createElement("button", "guild-chat-launch", "Guild Chat");
     launchButton.type = "button";
     launchButton.setAttribute("aria-label", "Mở Guild Chat");
@@ -194,9 +251,12 @@
 
     let user = null;
     let membership = null;
-    let messageQuery = null;
-    let connectionListener = null;
+    let messagePolling = false;
     let connectionPromise = null;
+    let authSession = null;
+    let currentIdToken = null;
+    let idTokenExpiresAt = 0;
+    let tokenRefreshPromise = null;
     let initialMessagesLoaded = false;
     let unreadCount = 0;
     let soundEnabled = readValue(SOUND_STORAGE_KEY, true) !== false;
@@ -225,6 +285,115 @@
       } catch (error) {
         console.error("[Web Workflow Utility] Guild Chat storage write failed.", error);
       }
+    }
+
+    function saveAuthTokens(result, uid) {
+      if (
+        !result ||
+        typeof result.id_token !== "string" ||
+        typeof result.refresh_token !== "string" ||
+        !Number.isFinite(Number(result.expires_in))
+      ) {
+        throw new Error("Firebase Authentication returned an incomplete token response.");
+      }
+
+      const sessionUid = result.localId || result.user_id || uid;
+      if (typeof sessionUid !== "string" || !sessionUid) {
+        throw new Error("Firebase Authentication did not return a user ID.");
+      }
+
+      authSession = {
+        uid: sessionUid,
+        refreshToken: result.refresh_token,
+      };
+      currentIdToken = result.id_token;
+      idTokenExpiresAt =
+        Date.now() + Math.max(Number(result.expires_in), 1) * 1000;
+      user = { uid: sessionUid };
+      writeValue(AUTH_STORAGE_KEY, authSession);
+    }
+
+    async function refreshAuthToken(forceRefresh) {
+      if (!authSession || typeof authSession.refreshToken !== "string") {
+        throw new Error("Firebase Authentication session is missing its refresh token.");
+      }
+      if (
+        !forceRefresh &&
+        currentIdToken &&
+        idTokenExpiresAt - Date.now() > AUTH_TOKEN_REFRESH_BUFFER_MS
+      ) {
+        return currentIdToken;
+      }
+      if (tokenRefreshPromise) return tokenRefreshPromise;
+
+      const refreshToken = authSession.refreshToken;
+      const body = new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+      }).toString();
+      tokenRefreshPromise = requestJson(
+        request,
+        "POST",
+        AUTH_REFRESH_URL,
+        body,
+        { "Content-Type": "application/x-www-form-urlencoded" },
+      )
+        .then((result) => {
+          saveAuthTokens(
+            {
+              id_token: result && result.id_token,
+              refresh_token: result && result.refresh_token,
+              expires_in: result && result.expires_in,
+              user_id: result && result.user_id,
+            },
+            authSession.uid,
+          );
+          return currentIdToken;
+        })
+        .finally(() => {
+          tokenRefreshPromise = null;
+        });
+      return tokenRefreshPromise;
+    }
+
+    async function databaseRequest(method, path, data, query) {
+      let idToken = await refreshAuthToken(false);
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const parameters = new URLSearchParams(query || {});
+        parameters.set("auth", idToken);
+        const encodedPath = path
+          .split("/")
+          .map((segment) => encodeURIComponent(segment))
+          .join("/");
+        const url =
+          `${FIREBASE_CONFIG.databaseURL}/${encodedPath}.json?${parameters.toString()}`;
+        try {
+          return await requestJson(request, method, url, data);
+        } catch (error) {
+          if (
+            attempt === 0 &&
+            error.status === 401 &&
+            /expired/i.test(error.message)
+          ) {
+            idToken = await refreshAuthToken(true);
+            continue;
+          }
+          throw error;
+        }
+      }
+      throw new Error("Firebase request could not be completed.");
+    }
+
+    function databaseGet(path, query) {
+      return databaseRequest("GET", path, undefined, query);
+    }
+
+    function databaseSet(path, value) {
+      return databaseRequest("PUT", path, value);
+    }
+
+    function databasePush(path, value) {
+      return databaseRequest("POST", path, value);
     }
 
     function setNotice(element, message) {
@@ -285,8 +454,8 @@
       return typeof value === "string" && /^[A-Za-z0-9_-]{1,48}$/.test(value);
     }
 
-    function memberRef(guildId, uid) {
-      return database.ref(`guilds/${guildId}/members/${uid}`);
+    function memberPath(guildId, uid) {
+      return `guilds/${guildId}/members/${uid}`;
     }
 
     function showChat(profile) {
@@ -352,40 +521,91 @@
       }
     }
 
-    function startMessageListener() {
-      if (!membership || !user || messageQuery) return;
-      const messagesRef = database
-        .ref(`guilds/${membership.guildId}/messages`)
-        .orderByChild("createdAt")
-        .limitToLast(MAX_HISTORY);
-      messageQuery = messagesRef;
-      messageQuery.on(
-        "child_added",
-        (snapshot) => appendMessage(snapshot.key, snapshot.val()),
-        (error) => {
-          setNotice(chatNotice, `Không tải được tin nhắn: ${error.message}`);
-          console.error("[Web Workflow Utility] Guild Chat listener failed.", error);
-        },
-      );
-      messageQuery.on(
-        "value",
-        () => {
+    let lastMessagePollError = null;
+
+    async function pollMessages() {
+      if (!messagePolling || !membership || !user) return;
+      try {
+        const messages = await databaseGet(
+          `guilds/${membership.guildId}/messages`,
+          {
+            orderBy: JSON.stringify("createdAt"),
+            limitToLast: String(MAX_HISTORY),
+          },
+        );
+        if (messages && typeof messages === "object" && !Array.isArray(messages)) {
+          const entries = Object.entries(messages).sort((first, second) => {
+            const firstTime = Number(first[1] && first[1].createdAt) || 0;
+            const secondTime = Number(second[1] && second[1].createdAt) || 0;
+            return firstTime - secondTime || first[0].localeCompare(second[0]);
+          });
+          for (const [key, message] of entries) {
+            appendMessage(key, message);
+          }
+        }
+        if (!initialMessagesLoaded) {
           initialMessagesLoaded = true;
           messagesList.scrollTop = messagesList.scrollHeight;
-        },
-        (error) => {
-          setNotice(chatNotice, `Không đồng bộ được lịch sử: ${error.message}`);
-          console.error("[Web Workflow Utility] Guild Chat history sync failed.", error);
-        },
-      );
+        }
+        connectionLabel.textContent = "Đã kết nối · làm mới mỗi 3 giây";
+        if (lastMessagePollError) {
+          setNotice(chatNotice, "");
+          lastMessagePollError = null;
+        }
+      } catch (error) {
+        connectionLabel.textContent = "Mất kết nối · sẽ thử lại...";
+        setNotice(chatNotice, `Không tải được tin nhắn: ${error.message}`);
+        if (lastMessagePollError !== error.message) {
+          console.error("[Web Workflow Utility] Guild Chat polling failed.", error);
+          lastMessagePollError = error.message;
+        }
+      }
+
+      if (messagePolling) {
+        global.setTimeout(() => void pollMessages(), MESSAGE_POLL_INTERVAL_MS);
+      }
+    }
+
+    function startMessageListener() {
+      if (!membership || !user || messagePolling) return;
+      messagePolling = true;
+      connectionLabel.textContent = "Đã kết nối · làm mới mỗi 3 giây";
+      void pollMessages();
     }
 
     async function signIn() {
-      await auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
-      if (auth.currentUser) return auth.currentUser;
+      const savedSession = readValue(AUTH_STORAGE_KEY, null);
+      if (
+        savedSession &&
+        typeof savedSession.uid === "string" &&
+        typeof savedSession.refreshToken === "string"
+      ) {
+        authSession = savedSession;
+        try {
+          await refreshAuthToken(true);
+          return user;
+        } catch (error) {
+          if (
+            !/INVALID_REFRESH_TOKEN|TOKEN_EXPIRED|USER_NOT_FOUND|USER_DISABLED/i.test(
+              `${error.code || ""} ${error.message}`,
+            )
+          ) {
+            throw error;
+          }
+          authSession = null;
+          currentIdToken = null;
+          idTokenExpiresAt = 0;
+          writeValue(AUTH_STORAGE_KEY, null);
+          writeValue(PROFILE_STORAGE_KEY, null);
+        }
+      }
 
-      const credential = await auth.signInAnonymously();
-      return credential.user;
+      const result = await requestJson(request, "POST", AUTH_SIGN_UP_URL, {
+        returnSecureToken: true,
+      });
+      saveAuthTokens(result);
+      writeValue(PROFILE_STORAGE_KEY, null);
+      return user;
     }
 
     async function loadSavedMembership() {
@@ -399,8 +619,7 @@
         return false;
       }
 
-      const snapshot = await memberRef(saved.guildId, user.uid).once("value");
-      const data = snapshot.val();
+      const data = await databaseGet(memberPath(saved.guildId, user.uid));
       if (!data || typeof data.nickname !== "string") {
         writeValue(PROFILE_STORAGE_KEY, null);
         return false;
@@ -417,17 +636,8 @@
     async function initializeConnection() {
       connectionLabel.textContent = "Đang kết nối...";
       await signIn();
-      user = auth.currentUser;
       if (!user) throw new Error("Firebase Authentication chưa cấp UID.");
-
-      if (!connectionListener) {
-        connectionListener = database.ref(".info/connected");
-        connectionListener.on("value", (snapshot) => {
-          connectionLabel.textContent = snapshot.val()
-            ? "Đã kết nối"
-            : "Mất kết nối — đang thử lại...";
-        });
-      }
+      connectionLabel.textContent = "Đã xác thực";
 
       const hasMembership = await loadSavedMembership();
       if (!hasMembership) {
@@ -477,10 +687,7 @@
       joinButton.disabled = true;
       setNotice(joinNotice, "Đang kiểm tra mã hội...");
       try {
-        const inviteSnapshot = await database
-          .ref(`guildInvites/${inviteCode}`)
-          .once("value");
-        const invite = inviteSnapshot.val();
+        const invite = await databaseGet(`guildInvites/${inviteCode}`);
         if (
           !invite ||
           invite.enabled !== true ||
@@ -489,16 +696,15 @@
           throw new Error("Mã hội không hợp lệ hoặc đã bị thu hồi.");
         }
 
-        const ref = memberRef(invite.guildId, user.uid);
-        const existingMember = await ref.once("value");
-        let member = existingMember.val();
+        const path = memberPath(invite.guildId, user.uid);
+        let member = await databaseGet(path);
         if (!member) {
           member = {
             nickname,
             inviteCode,
-            createdAt: firebase.database.ServerValue.TIMESTAMP,
+            createdAt: { ".sv": "timestamp" },
           };
-          await ref.set(member);
+          await databaseSet(path, member);
           member.nickname = nickname;
         } else {
           setNotice(joinNotice, `Đã tham gia trước đó với nickname "${member.nickname}".`);
@@ -546,12 +752,11 @@
       sendButton.disabled = true;
       lastSentAt = Date.now();
       try {
-        const ref = database.ref(`guilds/${membership.guildId}/messages`).push();
-        await ref.set({
+        await databasePush(`guilds/${membership.guildId}/messages`, {
           uid: user.uid,
           nickname: membership.nickname,
           text,
-          createdAt: firebase.database.ServerValue.TIMESTAMP,
+          createdAt: { ".sv": "timestamp" },
         });
         messageInput.value = "";
         messageInput.focus();
