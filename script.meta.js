@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ThanhND
 // @namespace    local.at-sp.notification-monitor
-// @version      2.76.0
+// @version      2.77.0
 // @description  Automates farm tasks, neighbor help, games, restaurant, ranch, and mythical beast actions.
 // @match        https://at-sp.ssvhue.work/*
 // @updateURL    https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.meta.js

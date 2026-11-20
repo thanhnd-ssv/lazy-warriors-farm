@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         ThanhND
 // @namespace    local.at-sp.notification-monitor
-// @version      2.76.0
+// @version      2.77.0
 // @description  Automates farm tasks, neighbor help, games, restaurant, ranch, and mythical beast actions.
 // @match        https://at-sp.ssvhue.work/*
 // @updateURL    https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.meta.js
@@ -278,6 +278,7 @@
       ],
     },
   ];
+  const MEMBER_VISIBLE_GROUP_NAMES = new Set(["Ruộng", "Chuồng"]);
   const CROP_ICONS = {
     "Cà rốt": ["carrot", "🥕"],
     Ngô: ["corn", "🌽"],
@@ -471,9 +472,19 @@
       ];
     }),
   ]);
+  const MEMBER_ALLOWED_FEATURE_KEYS = new Set([
+    ...AUTOMATION_FEATURE_GROUPS
+      .filter((group) => MEMBER_VISIBLE_GROUP_NAMES.has(group.name))
+      .flatMap((group) => group.features.map((feature) => feature.key)),
+    ...WORKSHOP_MACHINE_OPTIONS.map(
+      (machine) => `${WORKSHOP_MACHINE_TOGGLE_PREFIX}${machine.key}`,
+    ),
+  ]);
 
   function isFeatureEnabled(key) {
-    return enabledFeatures[key] !== false;
+    return (
+      MEMBER_ALLOWED_FEATURE_KEYS.has(key) && enabledFeatures[key] !== false
+    );
   }
 
   function getTaskFeature(message) {
@@ -3382,7 +3393,7 @@
   settingsTabs.setAttribute("aria-label", "Khu vực cài đặt tự động");
   Object.assign(settingsTabs.style, {
     display: "grid",
-    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
     gap: "3px",
     margin: "0",
     padding: "2px",
@@ -3858,6 +3869,8 @@
   }
 
   for (const [groupIndex, group] of AUTOMATION_FEATURE_GROUPS.entries()) {
+    if (!MEMBER_VISIBLE_GROUP_NAMES.has(group.name)) continue;
+
     const groupPanel = document.createElement("div");
     groupPanel.setAttribute("role", "tabpanel");
     groupPanel.id = `at-sp-settings-area-${groupIndex + 1}`;
