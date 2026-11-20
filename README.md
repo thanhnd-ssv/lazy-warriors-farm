@@ -16,7 +16,7 @@ Tải lại trang game và mở bảng điều khiển bằng biểu tượng ng
 Admin cần cấu hình Firebase một lần:
 
 1. Bật **Anonymous Authentication** và tạo **Realtime Database**.
-2. Đăng nội dung trong [`firebase.database.rules.json`](./firebase.database.rules.json) lên **Realtime Database → Rules**.
+2. Đăng nội dung mới nhất trong [`firebase.database.rules.json`](./firebase.database.rules.json) lên **Realtime Database → Rules** trước khi cập nhật userscript.
 3. Tạo mã mời 16–64 ký tự không dấu, gồm chữ cái A–Z, số và dấu gạch ngang giữa các cụm, tại `guildInvites/<INVITE_CODE>`. Ví dụ định dạng: `HOI-LUOI-BIEN-2026-7K4P` (không dùng ví dụ này làm mã thật):
 
    ```json
@@ -30,7 +30,7 @@ Giữ mã mời riêng tư; đặt `enabled` thành `false` để thu hồi. Kh�
 
 ## Sử dụng
 
-Mở **Chung → Guild Chat**, nhập tên hiển thị (2–12 ký tự) và mã mời không dấu (16–64 ký tự). Thành viên cần cài userscript và dùng cùng mã mời.
+Mở **Chung → Guild Chat**, nhập tên hiển thị (2–12 ký tự), mã mời và chọn avatar; bỏ qua avatar để được chọn ngẫu nhiên. Thành viên cần cài userscript và dùng cùng mã mời.
 
 ## Cập nhật
 

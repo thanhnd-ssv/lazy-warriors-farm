@@ -17,6 +17,11 @@
   const AUTH_STORAGE_KEY = "web-workflow-utility.guild-chat.auth";
   const PROFILE_STORAGE_KEY = "web-workflow-utility.guild-chat.profile";
   const CHAT_TITLE = "😴 Lazy Farm 🌾";
+  const CHARACTER_AVATARS = [
+    "👨‍🌾", "👩‍🌾", "🧑‍🌾", "👨‍🍳", "👩‍🍳", "👨", "👩", "👴",
+    "👵", "👦", "👧", "👶", "🤡", "🧙", "🧛", "🧟", "👽", "🐷",
+    "🐶", "🐱", "🐰", "🐟", "🐼", "🦄",
+  ];
   const EMOJI_CATEGORIES = [
     {
       label: "Biểu cảm",
@@ -229,6 +234,22 @@
       : value;
   }
 
+  function isCharacterAvatar(value) {
+    return typeof value === "string" && CHARACTER_AVATARS.includes(value);
+  }
+
+  function randomCharacterAvatar() {
+    return CHARACTER_AVATARS[Math.floor(Math.random() * CHARACTER_AVATARS.length)];
+  }
+
+  function fallbackCharacterAvatar(uid) {
+    let hash = 0;
+    for (const character of uid) {
+      hash = (hash * 31 + character.charCodeAt(0)) >>> 0;
+    }
+    return CHARACTER_AVATARS[hash % CHARACTER_AVATARS.length];
+  }
+
   function mount({ container, getValue, setValue, request }) {
     if (typeof request !== "function") {
       throw new Error("Tampermonkey request API chưa được cấu hình.");
@@ -267,7 +288,6 @@
           height: min(370px, calc(100vh - 24px));
           min-height: min(340px, calc(100vh - 24px)); overflow: hidden;
           color: #4d5d43; background-color: #e6efd9;
-          background-position: center; background-size: cover; background-repeat: no-repeat;
           border: 3px solid #fffdf4; border-radius: 22px;
           box-shadow: 0 14px 38px #4e694a45, 0 3px 0 #b5d69e;
         }
@@ -290,7 +310,10 @@
         }
         button:hover:not(:disabled) { background: #f2f8df; }
         button:disabled { opacity: .6; cursor: wait; }
-        .content { display: flex; flex: 1; min-height: 0; flex-direction: column; }
+        .content {
+          display: flex; flex: 1; min-height: 0; flex-direction: column;
+          background-position: center; background-size: cover; background-repeat: no-repeat;
+        }
         .join, .chat { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 9px; padding: 12px; }
         .join[hidden], .chat[hidden] { display: none; }
         .join {
@@ -303,7 +326,7 @@
             linear-gradient(180deg, #d5edf0 0 38%, #e8f2d1 72%, #d5e7ad 100%);
         }
         .join-card {
-          display: flex; flex-direction: column; gap: 12px;
+          display: flex; flex: 0 0 auto; flex-direction: column; gap: 12px;
           width: 100%; padding: 20px 17px 15px;
           background: #fffdf4ed; border: 1px solid #fff;
           border-radius: 20px; box-shadow: 0 8px 24px #647b4c24;
@@ -314,6 +337,17 @@
         .join label {
           display: flex; flex-direction: column; width: 100%; gap: 5px;
           color: #65745b; font-size: 11px; font-weight: 700;
+        }
+        .avatar-section { display: grid; gap: 5px; }
+        .avatar-label { display: flex; justify-content: space-between; gap: 6px; color: #65745b; font-size: 11px; font-weight: 700; }
+        .avatar-hint { color: #89957b; font-size: 10px; font-weight: 400; }
+        .avatar-options { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+        .avatar-option {
+          min-width: 0; min-height: 28px; padding: 0; font-size: 17px; line-height: 1;
+        }
+        .avatar-option[aria-pressed="true"] {
+          background: #e6f2d2; border-color: #85b36c;
+          box-shadow: 0 0 0 2px #a4c87535;
         }
         input {
           display: block; width: 100%; min-height: 40px; padding: 8px 11px;
@@ -464,6 +498,13 @@
               <label>Mã mời hội
                 <input class="invite-code" maxlength="64" autocomplete="off" required>
               </label>
+              <div class="avatar-section">
+                <div class="avatar-label">
+                  <span>Avatar nhân vật</span>
+                  <span class="avatar-hint">Bỏ qua để chọn ngẫu nhiên</span>
+                </div>
+                <div class="avatar-options" role="group" aria-label="Chọn avatar nhân vật"></div>
+              </div>
               <button type="submit" class="primary join-button">Vào hội</button>
               <button type="button" class="retry">Thử kết nối lại</button>
               <div class="join-notice notice" role="status"></div>
@@ -506,10 +547,12 @@
     document.body.append(host);
 
     const panel = shadow.querySelector(".panel");
+    const content = shadow.querySelector(".content");
     const connectionLabel = shadow.querySelector(".connection");
     const joinForm = shadow.querySelector(".join");
     const nicknameInput = shadow.querySelector(".nickname");
     const inviteCodeInput = shadow.querySelector(".invite-code");
+    const avatarOptions = shadow.querySelector(".avatar-options");
     const joinButton = shadow.querySelector(".join-button");
     const joinNotice = shadow.querySelector(".join-notice");
     const retryButton = shadow.querySelector(".retry");
@@ -526,6 +569,33 @@
     const chatNotice = shadow.querySelector(".chat-notice");
     const toast = shadow.querySelector(".toast");
 
+    let selectedAvatar = null;
+    const randomAvatarButton = createElement("button", "avatar-option", "🎲");
+    randomAvatarButton.type = "button";
+    randomAvatarButton.setAttribute("aria-label", "Chọn avatar ngẫu nhiên");
+    randomAvatarButton.setAttribute("aria-pressed", "true");
+    avatarOptions.append(randomAvatarButton);
+    for (const avatar of CHARACTER_AVATARS) {
+      const option = createElement("button", "avatar-option", avatar);
+      option.type = "button";
+      option.dataset.avatar = avatar;
+      option.setAttribute("aria-label", avatar);
+      option.setAttribute("aria-pressed", "false");
+      avatarOptions.append(option);
+    }
+    avatarOptions.addEventListener("click", (event) => {
+      const target = event.target;
+      if (!(target instanceof Element)) return;
+      const option = target.closest("button.avatar-option");
+      if (!option || !avatarOptions.contains(option)) return;
+      selectedAvatar = isCharacterAvatar(option.dataset.avatar)
+        ? option.dataset.avatar
+        : null;
+      for (const button of avatarOptions.children) {
+        button.setAttribute("aria-pressed", String(button === option));
+      }
+    });
+
     populateEmojiPicker();
     const backgroundCache = new Map();
     let backgroundRequestVersion = 0;
@@ -535,7 +605,7 @@
       const url = getChatBackgroundUrl(new Date());
       const requestVersion = ++backgroundRequestVersion;
       const cachedImage = backgroundCache.get(url);
-      panel.style.backgroundImage = backgroundOverlay;
+      content.style.backgroundImage = backgroundOverlay;
 
       const imagePromise = cachedImage
         ? Promise.resolve(cachedImage)
@@ -549,7 +619,7 @@
           ) {
             return;
           }
-          panel.style.backgroundImage =
+          content.style.backgroundImage =
             `${backgroundOverlay}, url("${imageDataUrl}")`;
         })
         .catch((error) => {
@@ -713,6 +783,10 @@
       return databaseRequest("PUT", path, value);
     }
 
+    function databasePatch(path, value) {
+      return databaseRequest("PATCH", path, value);
+    }
+
     function databasePush(path, value) {
       return databaseRequest("POST", path, value);
     }
@@ -833,7 +907,9 @@
       const avatar = createElement(
         "span",
         "message-avatar",
-        user && data.uid === user.uid ? "🐻" : "🐰",
+        isCharacterAvatar(data.avatar)
+          ? data.avatar
+          : fallbackCharacterAvatar(data.uid),
       );
       avatar.setAttribute("aria-hidden", "true");
 
@@ -977,11 +1053,23 @@
         return false;
       }
 
-      showChat({
+      const avatar = isCharacterAvatar(data.avatar)
+        ? data.avatar
+        : isCharacterAvatar(saved.avatar)
+          ? saved.avatar
+          : randomCharacterAvatar();
+      if (!isCharacterAvatar(data.avatar)) {
+        await databasePatch(memberPath(saved.guildId, user.uid), { avatar });
+      }
+
+      const profile = {
         guildId: saved.guildId,
         nickname: data.nickname,
         inviteCode: data.inviteCode,
-      });
+        avatar,
+      };
+      writeValue(PROFILE_STORAGE_KEY, { ...profile, uid: user.uid });
+      showChat(profile);
       return true;
     }
 
@@ -1062,22 +1150,36 @@
 
         const path = memberPath(invite.guildId, user.uid);
         let member = await databaseGet(path);
+        let avatar;
         if (!member) {
+          avatar = isCharacterAvatar(selectedAvatar)
+            ? selectedAvatar
+            : randomCharacterAvatar();
           member = {
             nickname,
             inviteCode,
             createdAt: { ".sv": "timestamp" },
+            avatar,
           };
           await databaseSet(path, member);
           member.nickname = nickname;
         } else {
           setNotice(joinNotice, `Đã tham gia trước đó với nickname "${member.nickname}".`);
+          avatar = isCharacterAvatar(member.avatar)
+            ? member.avatar
+            : isCharacterAvatar(selectedAvatar)
+              ? selectedAvatar
+              : randomCharacterAvatar();
+          if (!isCharacterAvatar(member.avatar)) {
+            await databasePatch(path, { avatar });
+          }
         }
 
         const profile = {
           uid: user.uid,
           guildId: invite.guildId,
           nickname: member.nickname,
+          avatar,
         };
         writeValue(PROFILE_STORAGE_KEY, profile);
         nicknameInput.value = "";
@@ -1119,6 +1221,7 @@
         await databasePush(`guilds/${membership.guildId}/messages`, {
           uid: user.uid,
           nickname: membership.nickname,
+          avatar: membership.avatar,
           text,
           createdAt: { ".sv": "timestamp" },
         });

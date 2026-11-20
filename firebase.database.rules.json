@@ -23,7 +23,7 @@
         "members": {
           "$uid": {
             ".read": "auth != null && auth.uid === $uid",
-            ".write": "auth != null && auth.uid === $uid && !data.exists() && newData.exists() && newData.child('nickname').isString() && newData.child('nickname').val().length >= 2 && newData.child('nickname').val().length <= 24 && newData.child('inviteCode').isString() && newData.child('inviteCode').val().length >= 16 && newData.child('inviteCode').val().length <= 64 && root.child('guildInvites').child(newData.child('inviteCode').val()).child('guildId').val() === $guildId && root.child('guildInvites').child(newData.child('inviteCode').val()).child('enabled').val() === true && newData.child('createdAt').isNumber() && newData.child('createdAt').val() <= now",
+            ".write": "auth != null && auth.uid === $uid && ((!data.exists() && newData.exists() && newData.child('nickname').isString() && newData.child('nickname').val().length >= 2 && newData.child('nickname').val().length <= 24 && newData.child('inviteCode').isString() && newData.child('inviteCode').val().length >= 16 && newData.child('inviteCode').val().length <= 64 && root.child('guildInvites').child(newData.child('inviteCode').val()).child('guildId').val() === $guildId && root.child('guildInvites').child(newData.child('inviteCode').val()).child('enabled').val() === true && newData.child('createdAt').isNumber() && newData.child('createdAt').val() <= now) || (data.exists() && newData.exists() && !data.child('avatar').exists() && newData.child('avatar').isString() && newData.child('nickname').val() === data.child('nickname').val() && newData.child('inviteCode').val() === data.child('inviteCode').val() && newData.child('createdAt').val() === data.child('createdAt').val()))",
             ".validate": "newData.hasChildren(['nickname', 'inviteCode', 'createdAt'])",
             "nickname": {
               ".validate": "newData.isString() && newData.val().length >= 2 && newData.val().length <= 24"
@@ -34,6 +34,9 @@
             "createdAt": {
               ".validate": "newData.isNumber() && newData.val() <= now"
             },
+            "avatar": {
+              ".validate": "newData.isString() && (newData.val() === '👨‍🌾' || newData.val() === '👩‍🌾' || newData.val() === '🧑‍🌾' || newData.val() === '👨‍🍳' || newData.val() === '👩‍🍳' || newData.val() === '👨' || newData.val() === '👩' || newData.val() === '👴' || newData.val() === '👵' || newData.val() === '👦' || newData.val() === '👧' || newData.val() === '👶' || newData.val() === '🤡' || newData.val() === '🧙' || newData.val() === '🧛' || newData.val() === '🧟' || newData.val() === '👽' || newData.val() === '🐷' || newData.val() === '🐶' || newData.val() === '🐱' || newData.val() === '🐰' || newData.val() === '🐟' || newData.val() === '🐼' || newData.val() === '🦄')"
+            },
             "$other": {
               ".validate": false
             }
@@ -43,7 +46,7 @@
           ".read": "auth != null && root.child('guilds').child($guildId).child('members').child(auth.uid).exists()",
           ".indexOn": ["createdAt"],
           "$messageId": {
-            ".write": "auth != null && !data.exists() && newData.exists() && root.child('guilds').child($guildId).child('members').child(auth.uid).exists() && newData.child('uid').val() === auth.uid && newData.child('nickname').val() === root.child('guilds').child($guildId).child('members').child(auth.uid).child('nickname').val()",
+            ".write": "auth != null && !data.exists() && newData.exists() && root.child('guilds').child($guildId).child('members').child(auth.uid).exists() && newData.child('uid').val() === auth.uid && newData.child('nickname').val() === root.child('guilds').child($guildId).child('members').child(auth.uid).child('nickname').val() && (!newData.child('avatar').exists() || newData.child('avatar').val() === root.child('guilds').child($guildId).child('members').child(auth.uid).child('avatar').val())",
             ".validate": "newData.hasChildren(['uid', 'nickname', 'text', 'createdAt'])",
             "uid": {
               ".validate": "newData.isString() && newData.val() === auth.uid"
@@ -56,6 +59,9 @@
             },
             "createdAt": {
               ".validate": "newData.isNumber() && newData.val() <= now && newData.val() >= now - 120000"
+            },
+            "avatar": {
+              ".validate": "newData.isString() && (newData.val() === '👨‍🌾' || newData.val() === '👩‍🌾' || newData.val() === '🧑‍🌾' || newData.val() === '👨‍🍳' || newData.val() === '👩‍🍳' || newData.val() === '👨' || newData.val() === '👩' || newData.val() === '👴' || newData.val() === '👵' || newData.val() === '👦' || newData.val() === '👧' || newData.val() === '👶' || newData.val() === '🤡' || newData.val() === '🧙' || newData.val() === '🧛' || newData.val() === '🧟' || newData.val() === '👽' || newData.val() === '🐷' || newData.val() === '🐶' || newData.val() === '🐱' || newData.val() === '🐰' || newData.val() === '🐟' || newData.val() === '🐼' || newData.val() === '🦄')"
             },
             "$other": {
               ".validate": false
