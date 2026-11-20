@@ -18,7 +18,7 @@
   const PROFILE_STORAGE_KEY = "web-workflow-utility.guild-chat.profile";
   const CHAT_TITLE = "😴 Lazy Farm 🌾";
   const CHARACTER_AVATARS = [
-    "👨‍🌾", "👩‍🌾", "🧑‍🌾", "👨‍🍳", "👩‍🍳", "👨", "👩", "👴",
+    "👨‍🌾", "👩‍🌾", "🧑", "👨‍🍳", "👩‍🍳", "👨", "👩", "👴",
     "👵", "👦", "👧", "👶", "🤡", "🧙", "🧛", "🧟", "👽", "🐷",
     "🐶", "🐱", "🐰", "🐟", "🐼", "🦄",
   ];
@@ -488,10 +488,6 @@
         <div class="content">
           <form class="join">
             <div class="join-card">
-              <div class="join-intro">
-                <strong>Chào bạn! 🌼</strong>
-                <span>Nhập thông tin để vào trò chuyện cùng hội nhé.</span>
-              </div>
               <label>Nickname
                 <input class="nickname" minlength="2" maxlength="12" autocomplete="nickname" required>
               </label>

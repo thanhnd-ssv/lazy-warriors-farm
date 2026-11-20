@@ -35,7 +35,7 @@
               ".validate": "newData.isNumber() && newData.val() <= now"
             },
             "avatar": {
-              ".validate": "newData.isString() && (newData.val() === '👨‍🌾' || newData.val() === '👩‍🌾' || newData.val() === '🧑‍🌾' || newData.val() === '👨‍🍳' || newData.val() === '👩‍🍳' || newData.val() === '👨' || newData.val() === '👩' || newData.val() === '👴' || newData.val() === '👵' || newData.val() === '👦' || newData.val() === '👧' || newData.val() === '👶' || newData.val() === '🤡' || newData.val() === '🧙' || newData.val() === '🧛' || newData.val() === '🧟' || newData.val() === '👽' || newData.val() === '🐷' || newData.val() === '🐶' || newData.val() === '🐱' || newData.val() === '🐰' || newData.val() === '🐟' || newData.val() === '🐼' || newData.val() === '🦄')"
+              ".validate": "newData.isString() && (newData.val() === '👨‍🌾' || newData.val() === '👩‍🌾' || newData.val() === '🧑' || newData.val() === '👨‍🍳' || newData.val() === '👩‍🍳' || newData.val() === '👨' || newData.val() === '👩' || newData.val() === '👴' || newData.val() === '👵' || newData.val() === '👦' || newData.val() === '👧' || newData.val() === '👶' || newData.val() === '🤡' || newData.val() === '🧙' || newData.val() === '🧛' || newData.val() === '🧟' || newData.val() === '👽' || newData.val() === '🐷' || newData.val() === '🐶' || newData.val() === '🐱' || newData.val() === '🐰' || newData.val() === '🐟' || newData.val() === '🐼' || newData.val() === '🦄')"
             },
             "$other": {
               ".validate": false
@@ -61,7 +61,7 @@
               ".validate": "newData.isNumber() && newData.val() <= now && newData.val() >= now - 120000"
             },
             "avatar": {
-              ".validate": "newData.isString() && (newData.val() === '👨‍🌾' || newData.val() === '👩‍🌾' || newData.val() === '🧑‍🌾' || newData.val() === '👨‍🍳' || newData.val() === '👩‍🍳' || newData.val() === '👨' || newData.val() === '👩' || newData.val() === '👴' || newData.val() === '👵' || newData.val() === '👦' || newData.val() === '👧' || newData.val() === '👶' || newData.val() === '🤡' || newData.val() === '🧙' || newData.val() === '🧛' || newData.val() === '🧟' || newData.val() === '👽' || newData.val() === '🐷' || newData.val() === '🐶' || newData.val() === '🐱' || newData.val() === '🐰' || newData.val() === '🐟' || newData.val() === '🐼' || newData.val() === '🦄')"
+              ".validate": "newData.isString() && (newData.val() === '👨‍🌾' || newData.val() === '👩‍🌾' || newData.val() === '🧑' || newData.val() === '👨‍🍳' || newData.val() === '👩‍🍳' || newData.val() === '👨' || newData.val() === '👩' || newData.val() === '👴' || newData.val() === '👵' || newData.val() === '👦' || newData.val() === '👧' || newData.val() === '👶' || newData.val() === '🤡' || newData.val() === '🧙' || newData.val() === '🧛' || newData.val() === '🧟' || newData.val() === '👽' || newData.val() === '🐷' || newData.val() === '🐶' || newData.val() === '🐱' || newData.val() === '🐰' || newData.val() === '🐟' || newData.val() === '🐼' || newData.val() === '🦄')"
             },
             "$other": {
               ".validate": false
