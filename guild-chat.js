@@ -1032,8 +1032,20 @@
         return;
       }
       if (!user) {
-        setNotice(joinNotice, "Đang xác thực; vui lòng thử lại.");
-        return;
+        joinButton.disabled = true;
+        setNotice(joinNotice, "Đang xác thực tài khoản...");
+        try {
+          await requestConnection();
+        } catch (error) {
+          joinButton.disabled = false;
+          setNotice(
+            joinNotice,
+            `Không xác thực được Firebase: ${error.message}`,
+          );
+          return;
+        }
+        joinButton.disabled = false;
+        if (joinForm.hidden) return;
       }
 
       joinButton.disabled = true;
