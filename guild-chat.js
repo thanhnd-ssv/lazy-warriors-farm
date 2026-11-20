@@ -91,7 +91,7 @@
     return element;
   }
 
-  function mount({ container, getValue, setValue, request, addStyle }) {
+  function mount({ container, getValue, setValue, request }) {
     if (typeof request !== "function") {
       throw new Error("Tampermonkey request API chưa được cấu hình.");
     }
@@ -313,13 +313,15 @@
         </div>
       </section>
     `;
-    if (typeof addStyle === "function") {
-      const inlineStyle = shadow.querySelector("style");
-      const injectedStyle = addStyle(inlineStyle.textContent);
-      if (!injectedStyle || typeof injectedStyle.remove !== "function") {
-        throw new Error("Tampermonkey không thể chèn stylesheet Guild Chat.");
-      }
-      inlineStyle.replaceWith(injectedStyle);
+    const inlineStyle = shadow.querySelector("style");
+    if (
+      typeof global.CSSStyleSheet === "function" &&
+      "adoptedStyleSheets" in shadow
+    ) {
+      const stylesheet = new global.CSSStyleSheet();
+      stylesheet.replaceSync(inlineStyle.textContent);
+      shadow.adoptedStyleSheets = [...shadow.adoptedStyleSheets, stylesheet];
+      inlineStyle.remove();
     }
     document.body.append(host);
 
