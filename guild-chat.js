@@ -5,6 +5,8 @@
     apiKey: "AIzaSyBTy82Yu5YLGn8R2Tyufu2CV8E2E0-ze2A",
     databaseURL: "https://web-workflow-utility-chat-default-rtdb.firebaseio.com",
   };
+  const CHAT_BACKGROUND_URL =
+    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcH3RLgxfasvnGYL7KnczA5dIhRG7yI-Y3zxEMrZ00Gw&s=10";
   const AUTH_STORAGE_KEY = "web-workflow-utility.guild-chat.auth";
   const PROFILE_STORAGE_KEY = "web-workflow-utility.guild-chat.profile";
   const CHAT_TITLE = "😴 Lazy Farm 🌾";
@@ -54,7 +56,7 @@
   const MAX_HISTORY = 150;
   const MAX_MESSAGE_LENGTH = 500;
   const MIN_NICKNAME_LENGTH = 2;
-  const MAX_NICKNAME_LENGTH = 24;
+  const MAX_NICKNAME_LENGTH = 12;
   const MESSAGE_COOLDOWN_MS = 1_500;
   const MESSAGE_POLL_INTERVAL_MS = 3_000;
   const AUTH_TOKEN_REFRESH_BUFFER_MS = 60_000;
@@ -127,11 +129,70 @@
     });
   }
 
+  function loadChatBackground(request) {
+    return new Promise((resolve, reject) => {
+      try {
+        request({
+          method: "GET",
+          url: CHAT_BACKGROUND_URL,
+          timeout: 20_000,
+          responseType: "arraybuffer",
+          onload(response) {
+            const status = Number(response.status) || 0;
+            if (status < 200 || status >= 300) {
+              reject(new Error(`Chat background request failed (HTTP ${status}).`));
+              return;
+            }
+            if (
+              !response.response ||
+              typeof response.response.byteLength !== "number"
+            ) {
+              reject(new Error("Chat background response was not binary."));
+              return;
+            }
+
+            try {
+              const bytes = new Uint8Array(response.response);
+              let binary = "";
+              const chunkSize = 0x8000;
+              for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+                binary += String.fromCharCode(
+                  ...bytes.subarray(offset, offset + chunkSize),
+                );
+              }
+              resolve(`data:image/jpeg;base64,${global.btoa(binary)}`);
+            } catch (error) {
+              reject(error);
+            }
+          },
+          onerror() {
+            reject(new Error("Unable to download the chat background image."));
+          },
+          ontimeout() {
+            reject(new Error("Chat background image request timed out."));
+          },
+          onabort() {
+            reject(new Error("Chat background image request was aborted."));
+          },
+        });
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   function createElement(tag, className, text) {
     const element = document.createElement(tag);
     if (className) element.className = className;
     if (text !== undefined) element.textContent = text;
     return element;
+  }
+
+  function capitalizeFirstCharacter(value) {
+    const firstCharacter = Array.from(value)[0];
+    return firstCharacter
+      ? firstCharacter.toLocaleUpperCase("vi-VN") + value.slice(firstCharacter.length)
+      : value;
   }
 
   function mount({ container, getValue, setValue, request }) {
@@ -241,9 +302,7 @@
           overflow-y: auto; margin: 0; padding: 5px 5px 12px; list-style: none;
           border-radius: 14px;
           background-color: #e6efd9;
-          background-image:
-            linear-gradient(rgba(255, 255, 255, .08), rgba(255, 255, 255, .08)),
-            url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcH3RLgxfasvnGYL7KnczA5dIhRG7yI-Y3zxEMrZ00Gw&s=10");
+          background-image: linear-gradient(rgba(255, 255, 255, .08), rgba(255, 255, 255, .08));
           background-position: center;
           background-size: cover;
           background-repeat: no-repeat;
@@ -281,12 +340,6 @@
           min-height: 16px; padding: 0 4px;
           color: #6f8b58; font-size: 10px; text-align: center;
         }
-        .chat-tools {
-          display: flex; align-items: center; gap: 6px;
-          padding: 5px 7px; background: #fffdf2cc;
-          border: 1.5px solid #e4ebc9; border-radius: 12px;
-        }
-        .guild-label { color: #7b896d; font-size: 10px; }
         .composer { position: relative; flex: 0 0 auto; margin-top: auto; }
         .emoji-picker {
           position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 3;
@@ -375,7 +428,7 @@
                 <span>Nhập thông tin để vào trò chuyện cùng hội nhé.</span>
               </div>
               <label>Nickname
-                <input class="nickname" maxlength="24" autocomplete="nickname" required>
+                <input class="nickname" minlength="2" maxlength="12" autocomplete="nickname" required>
               </label>
               <label>Mã mời hội
                 <input class="invite-code" maxlength="64" autocomplete="off" required>
@@ -387,10 +440,6 @@
           </form>
           <section class="chat" hidden>
             <ol class="messages" aria-live="polite" aria-label="Tin nhắn"></ol>
-            <div class="unread"></div>
-            <div class="chat-tools">
-              <span class="guild-label"></span>
-            </div>
             <div class="chat-notice notice" role="status"></div>
             <div class="composer">
               <div class="emoji-picker" role="dialog" aria-label="Chọn emoji" hidden>
@@ -436,7 +485,6 @@
     const chatView = shadow.querySelector(".chat");
     const messagesList = shadow.querySelector(".messages");
     const unreadLabel = shadow.querySelector(".unread");
-    const guildLabel = shadow.querySelector(".guild-label");
     const messageInput = shadow.querySelector(".message-input");
     const emojiButton = shadow.querySelector(".emoji-button");
     const emojiPicker = shadow.querySelector(".emoji-picker");
@@ -448,6 +496,14 @@
     const toast = shadow.querySelector(".toast");
 
     populateEmojiPicker();
+    loadChatBackground(request)
+      .then((imageDataUrl) => {
+        messagesList.style.backgroundImage =
+          `linear-gradient(rgba(255, 255, 255, .08), rgba(255, 255, 255, .08)), url("${imageDataUrl}")`;
+      })
+      .catch((error) => {
+        console.error("[Web Workflow Utility] Guild Chat background failed.", error);
+      });
 
     let user = null;
     let membership = null;
@@ -687,7 +743,6 @@
       membership = profile;
       joinForm.hidden = true;
       chatView.hidden = false;
-      guildLabel.textContent = `Hội: ${profile.guildId}`;
       setNotice(joinNotice, "");
       startMessageListener();
     }
@@ -723,7 +778,7 @@
       const identity = createElement(
         "span",
         "message-author",
-        `${data.nickname} · ${data.uid.slice(0, 6)}`,
+        capitalizeFirstCharacter(data.nickname),
       );
       const time = createElement("time", "", new Date(data.createdAt).toLocaleTimeString(
         "vi-VN",
