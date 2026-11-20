@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Web Workflow Utility
 // @namespace    local.at-sp.notification-monitor
-// @version      2.78.21
+// @version      2.78.25
 // @description  Automates farm tasks, neighbor help, games, restaurant, ranch, and mythical beast actions.
 // @match        https://at-sp.ssvhue.work/*
 // @require      https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/guild-chat.js
@@ -13,6 +13,8 @@
 // @grant        GM_setValue
 // @connect      generativelanguage.googleapis.com
 // @connect      gstatic.com
+// @connect      server.wallpaperalchemy.com
+// @connect      cdn-media.sforum.vn
 // @connect      raw.githubusercontent.com
 // @connect      firebaseio.com
 // @connect      firebasedatabase.app
@@ -3382,7 +3384,32 @@
   }
   intervalControl.append(intervalSelect);
 
-  commonSettings.append(control, intervalControl);
+  const updateLink = document.createElement("a");
+  updateLink.href =
+    "https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.user.js";
+  updateLink.target = "_blank";
+  updateLink.rel = "noopener noreferrer";
+  updateLink.textContent = "Cập nhật userscript";
+  updateLink.title = "Mở bản cập nhật trên Tampermonkey";
+  Object.assign(updateLink.style, {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    minHeight: "30px",
+    margin: "0",
+    padding: "6px 8px",
+    border: "1px solid #d5e1d6",
+    borderRadius: "10px",
+    color: "#157347",
+    background: "#fff",
+    font: "600 12px system-ui, sans-serif",
+    textDecoration: "none",
+    cursor: "pointer",
+  });
+  setCompactSpacing(updateLink, "6px 8px");
+
+  commonSettings.append(control, intervalControl, updateLink);
 
   const settingsTabs = document.createElement("div");
   settingsTabs.setAttribute("role", "tablist");

@@ -1,49 +1,37 @@
 # Web Workflow Utility
 
-## Cài đặt tool
+Userscript hỗ trợ một số thao tác trong SSV Farm và cung cấp Guild Chat.
 
-Cài Tampermonkey, sau đó chọn đúng phiên bản:
+## Cài đặt
 
-- **Thành viên:** [Cài bản giới hạn Ruộng/Chuồng](https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.user.js)
-- **Admin:** [Cài bản đầy đủ](https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.user.js)
+Cài Tampermonkey, sau đó chọn **một** phiên bản:
 
-Chỉ cài một phiên bản. Mở trang game, bấm biểu tượng ngôi sao để mở bảng điều khiển.
+- [Bản thành viên](https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.user.js)
+- [Bản admin](https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.user.js)
 
-## Thiết lập Guild Chat (admin làm một lần)
+Tải lại trang game và mở bảng điều khiển bằng biểu tượng ngôi sao.
 
-1. Trong Firebase project `web-workflow-utility-chat`, bật **Authentication → Sign-in method → Anonymous**.
-2. Tạo hoặc mở Realtime Database ở chế độ khóa.
-3. Vào **Realtime Database → Rules**, thay nội dung bằng file [`firebase.database.rules.json`](./firebase.database.rules.json), rồi bấm **Publish**.
-4. Trong tab **Data**, tạo một mã mời ngẫu nhiên dài 32 ký tự chữ in hoa/số tại `guildInvites/<MA_MOI>`, ví dụ:
+## Thiết lập Guild Chat
+
+Admin cần cấu hình Firebase một lần:
+
+1. Bật **Anonymous Authentication** và tạo **Realtime Database**.
+2. Đăng nội dung trong [`firebase.database.rules.json`](./firebase.database.rules.json) lên **Realtime Database → Rules**.
+3. Tạo mã mời 16–64 ký tự không dấu, gồm chữ cái A–Z, số và dấu gạch ngang giữa các cụm, tại `guildInvites/<INVITE_CODE>`. Ví dụ định dạng: `HOI-LUOI-BIEN-2026-7K4P` (không dùng ví dụ này làm mã thật):
 
    ```json
    {
-     "guildId": "web-workflow",
+     "guildId": "your-guild",
      "enabled": true
    }
    ```
 
-   Thay `<MA_MOI>` bằng mã bí mật thực tế; không dùng ví dụ làm mã thật. Chỉ chia sẻ mã này với thành viên. Tắt mã bằng cách đặt `enabled` thành `false`.
+Giữ mã mời riêng tư; đặt `enabled` thành `false` để thu hồi. Không đưa Firebase Service Account key hoặc thông tin quản trị vào userscript. Quyền truy cập dữ liệu được kiểm soát bằng Firebase Security Rules.
 
-Mã mời chỉ cho phép tham gia hội, không cấp quyền quản trị Firebase. Không đưa Service Account key hoặc thông tin đăng nhập quản trị vào userscript. Firebase Web config trong `guild-chat.js` là cấu hình client; quyền truy cập dữ liệu được giới hạn bằng Security Rules.
+## Sử dụng
 
-## Thành viên sử dụng
-
-1. Cài một trong hai bản ở trên và tải lại trang game.
-2. Mở bảng điều khiển, vào **Chung → Guild Chat**.
-3. Nhập nickname (2–24 ký tự) và mã mời, rồi bấm **Join Guild**.
-4. Thành viên khác làm tương tự trên trình duyệt/máy tính của họ. Chat tải tối đa 150 tin nhắn gần nhất, kiểm tra tin mới mỗi 3 giây, có số tin chưa đọc và âm thanh bật/tắt.
-
-Anonymous Authentication tạo UID riêng; Tampermonkey lưu phiên đăng nhập để giữ UID qua các lần tải lại. Nếu đổi máy hoặc xóa dữ liệu của userscript, hãy tham gia lại bằng mã mời; UID ngắn cạnh nickname giúp phân biệt người trùng tên.
-
-## Giới hạn và bảo trì
-
-- Tool chỉ hiển thị/tải 150 tin gần nhất; dữ liệu cũ hơn vẫn nằm trong Realtime Database và không tự xóa. Admin cần chủ động dọn dữ liệu cũ nếu cần.
-- Giới hạn gửi 1,5 giây là phía client, không phải cơ chế chống spam bảo đảm trước người cố tình sửa script.
-- Để kiểm tra, publish Rules, tạo mã mời rồi tham gia từ hai tài khoản/trình duyệt riêng. Chưa thể xác nhận trao đổi liên máy cho đến khi các bước Firebase này được thực hiện.
+Mở **Chung → Guild Chat**, nhập tên hiển thị (2–12 ký tự) và mã mời không dấu (16–64 ký tự). Thành viên cần cài userscript và dùng cùng mã mời.
 
 ## Cập nhật
 
-Tampermonkey tự kiểm tra phiên bản mới. Có thể kiểm tra thủ công trong **Dashboard → Utilities → Check for userscript updates**, rồi tải lại trang game.
-
-Khi phát hành bản mới, admin cần push module `guild-chat.js`, userscript và metadata tương ứng lên GitHub; tăng `@version` trong mỗi cặp script/metadata để Tampermonkey nhận cập nhật.
+Kiểm tra cập nhật trong Tampermonkey Dashboard hoặc cài lại từ các liên kết phía trên. Khi phát hành phiên bản mới, cập nhật `guild-chat.js`, userscript và metadata trên GitHub; đồng bộ giá trị `@version`.

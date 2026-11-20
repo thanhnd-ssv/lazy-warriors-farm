@@ -5,8 +5,15 @@
     apiKey: "AIzaSyBTy82Yu5YLGn8R2Tyufu2CV8E2E0-ze2A",
     databaseURL: "https://web-workflow-utility-chat-default-rtdb.firebaseio.com",
   };
-  const CHAT_BACKGROUND_URL =
-    "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcH3RLgxfasvnGYL7KnczA5dIhRG7yI-Y3zxEMrZ00Gw&s=10";
+  const CHAT_BACKGROUND_URLS = {
+    morning:
+      "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR4EiZLl_gbVaIcNMU4SfslA0wWnTwWujRL6joCZOUb33pJsvNaj_L4n0m0&s=10",
+    afternoon:
+      "https://server.wallpaperalchemy.com/storage/wallpapers/2487/anime-cat-napping-on-green-grass-wallpaper.jpg",
+    evening:
+      "https://cdn-media.sforum.vn/storage/app/media/ctvseo_maihue/hinh-nen-ghibli/hinh-nen-ghibli-49.jpg",
+  };
+  const CHAT_BACKGROUND_CHANGE_MINUTES = [60, 12 * 60, 17 * 60 + 30];
   const AUTH_STORAGE_KEY = "web-workflow-utility.guild-chat.auth";
   const PROFILE_STORAGE_KEY = "web-workflow-utility.guild-chat.profile";
   const CHAT_TITLE = "😴 Lazy Farm 🌾";
@@ -129,12 +136,39 @@
     });
   }
 
-  function loadChatBackground(request) {
+  function getChatBackgroundUrl(date) {
+    const minuteOfDay = date.getHours() * 60 + date.getMinutes();
+    if (minuteOfDay >= 60 && minuteOfDay < 12 * 60) {
+      return CHAT_BACKGROUND_URLS.morning;
+    }
+    if (minuteOfDay >= 12 * 60 && minuteOfDay < 17 * 60 + 30) {
+      return CHAT_BACKGROUND_URLS.afternoon;
+    }
+    return CHAT_BACKGROUND_URLS.evening;
+  }
+
+  function millisecondsUntilNextBackgroundChange(date) {
+    const minuteOfDay = date.getHours() * 60 + date.getMinutes();
+    const nextChange = CHAT_BACKGROUND_CHANGE_MINUTES.find(
+      (minute) => minute > minuteOfDay,
+    );
+    const minutesUntilChange =
+      nextChange === undefined
+        ? 24 * 60 - minuteOfDay + CHAT_BACKGROUND_CHANGE_MINUTES[0]
+        : nextChange - minuteOfDay;
+    return (
+      minutesUntilChange * 60_000 -
+      date.getSeconds() * 1_000 -
+      date.getMilliseconds()
+    );
+  }
+
+  function loadChatBackground(request, url) {
     return new Promise((resolve, reject) => {
       try {
         request({
           method: "GET",
-          url: CHAT_BACKGROUND_URL,
+          url,
           timeout: 20_000,
           responseType: "arraybuffer",
           onload(response) {
@@ -232,7 +266,8 @@
           display: flex; flex-direction: column; width: min(280px, calc(100vw - 24px));
           height: min(370px, calc(100vh - 24px));
           min-height: min(340px, calc(100vh - 24px)); overflow: hidden;
-          color: #4d5d43; background: #eff8df;
+          color: #4d5d43; background-color: #e6efd9;
+          background-position: center; background-size: cover; background-repeat: no-repeat;
           border: 3px solid #fffdf4; border-radius: 22px;
           box-shadow: 0 14px 38px #4e694a45, 0 3px 0 #b5d69e;
         }
@@ -240,7 +275,7 @@
         .header {
           display: flex; align-items: center; justify-content: space-between;
           gap: 8px; padding: 2px 10px 2px 10px;
-          background: linear-gradient(180deg, #fffefa 0%, #fffaf1 100%);
+          background: rgba(255, 254, 250, .12);
           border-bottom: 2px solid #dfe9c8;
         }
         .heading { display: grid; gap: 2px; min-width: 0; }
@@ -295,17 +330,13 @@
           isolation: isolate;
           gap: 6px;
           padding: 8px 8px 4px;
-          background: #e6efd9;
+          background: transparent;
         }
         .messages {
           display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 7px;
           overflow-y: auto; margin: 0; padding: 5px 5px 12px; list-style: none;
           border-radius: 14px;
-          background-color: #e6efd9;
-          background-image: linear-gradient(rgba(255, 255, 255, .08), rgba(255, 255, 255, .08));
-          background-position: center;
-          background-size: cover;
-          background-repeat: no-repeat;
+          background: transparent;
         }
         .message {
           display: flex; align-items: flex-end; gap: 5px;
@@ -372,7 +403,7 @@
         .emoji-option:hover { background: #f3edcf; }
         .send {
           display: flex; gap: 5px; padding: 6px;
-          background: #fffdf2e8; border: 1.5px solid #dde8c2;
+          background: rgba(255, 253, 242, .42); border: 1.5px solid #dde8c2;
           border-radius: 15px; box-shadow: 0 3px 10px #6c7d5520;
         }
         .chat-notice:empty { display: none; }
@@ -496,14 +527,47 @@
     const toast = shadow.querySelector(".toast");
 
     populateEmojiPicker();
-    loadChatBackground(request)
-      .then((imageDataUrl) => {
-        messagesList.style.backgroundImage =
-          `linear-gradient(rgba(255, 255, 255, .08), rgba(255, 255, 255, .08)), url("${imageDataUrl}")`;
-      })
-      .catch((error) => {
-        console.error("[Web Workflow Utility] Guild Chat background failed.", error);
-      });
+    const backgroundCache = new Map();
+    let backgroundRequestVersion = 0;
+    const backgroundOverlay =
+      "linear-gradient(rgba(255, 255, 255, .08), rgba(255, 255, 255, .08))";
+    function updateChatBackground() {
+      const url = getChatBackgroundUrl(new Date());
+      const requestVersion = ++backgroundRequestVersion;
+      const cachedImage = backgroundCache.get(url);
+      panel.style.backgroundImage = backgroundOverlay;
+
+      const imagePromise = cachedImage
+        ? Promise.resolve(cachedImage)
+        : loadChatBackground(request, url);
+      imagePromise
+        .then((imageDataUrl) => {
+          backgroundCache.set(url, imageDataUrl);
+          if (
+            requestVersion !== backgroundRequestVersion ||
+            getChatBackgroundUrl(new Date()) !== url
+          ) {
+            return;
+          }
+          panel.style.backgroundImage =
+            `${backgroundOverlay}, url("${imageDataUrl}")`;
+        })
+        .catch((error) => {
+          console.error(
+            "[Web Workflow Utility] Guild Chat background failed.",
+            error,
+          );
+        });
+    }
+    function scheduleNextBackgroundChange() {
+      const delay = millisecondsUntilNextBackgroundChange(new Date());
+      global.setTimeout(() => {
+        updateChatBackground();
+        scheduleNextBackgroundChange();
+      }, delay);
+    }
+    updateChatBackground();
+    scheduleNextBackgroundChange();
 
     let user = null;
     let membership = null;
