@@ -100,13 +100,14 @@
     launchButton.setAttribute("aria-label", "Mở Guild Chat");
     Object.assign(launchButton.style, {
       width: "100%",
-      minHeight: "30px",
-      padding: "6px 8px",
-      border: "1px solid #27513b",
-      borderRadius: "8px",
-      color: "#e9f8ee",
-      background: "#183b2b",
-      font: "700 12px system-ui, sans-serif",
+      minHeight: "34px",
+      padding: "7px 10px",
+      border: "2px solid #b9dba8",
+      borderRadius: "12px",
+      color: "#587047",
+      background: "linear-gradient(135deg, #fffdf5, #edf7dc)",
+      boxShadow: "0 3px 10px #59714324",
+      font: "800 12px system-ui, sans-serif",
       cursor: "pointer",
     });
     container.append(launchButton);
@@ -121,72 +122,143 @@
     const shadow = host.attachShadow({ mode: "open" });
     shadow.innerHTML = `
       <style>
-        :host { color-scheme: dark; font: 13px/1.4 system-ui, sans-serif; }
+        :host { color-scheme: light; font: 13px/1.45 "Trebuchet MS", system-ui, sans-serif; }
         * { box-sizing: border-box; }
         .panel {
-          display: flex; flex-direction: column; width: min(360px, calc(100vw - 24px));
-          height: min(500px, calc(100vh - 24px)); overflow: hidden;
-          color: #e9f3ec; background: #101914; border: 1px solid #345342;
-          border-radius: 12px; box-shadow: 0 12px 36px #0009;
+          display: flex; flex-direction: column; width: min(390px, calc(100vw - 24px));
+          height: min(620px, calc(100vh - 24px)); overflow: hidden;
+          color: #4d5d43; background: #eff8df;
+          border: 3px solid #fffdf4; border-radius: 22px;
+          box-shadow: 0 14px 38px #4e694a45, 0 3px 0 #b5d69e;
         }
         .panel[hidden] { display: none; }
         .header {
           display: flex; align-items: center; justify-content: space-between;
-          gap: 8px; padding: 10px 12px; background: #17271d;
-          border-bottom: 1px solid #345342;
+          gap: 8px; padding: 9px 11px 8px;
+          background: linear-gradient(180deg, #fffefa 0%, #fffaf1 100%);
+          border-bottom: 2px solid #dfe9c8;
         }
         .heading { display: grid; gap: 2px; min-width: 0; }
-        .heading strong { color: #b8f0c7; font-size: 14px; }
-        .connection { color: #a7b9ac; font-size: 11px; }
+        .heading strong { color: #5f754f; font-size: 15px; letter-spacing: .1px; }
+        .connection { color: #9aa58e; font-size: 10px; }
         .header-actions { display: flex; gap: 5px; }
         button, input { font: inherit; }
         button {
-          min-height: 30px; padding: 5px 9px; color: #e9f3ec;
-          background: #24392b; border: 1px solid #45664e;
-          border-radius: 7px; cursor: pointer;
+          min-height: 32px; padding: 5px 10px; color: #617153;
+          background: #fffdf4; border: 1.5px solid #ccdbaa;
+          border-radius: 10px; cursor: pointer;
         }
-        button:hover:not(:disabled) { background: #31503a; }
+        button:hover:not(:disabled) { background: #f2f8df; }
         button:disabled { opacity: .6; cursor: wait; }
         .content { display: flex; flex: 1; min-height: 0; flex-direction: column; }
         .panel.collapsed .content { display: none; }
         .join, .chat { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 9px; padding: 12px; }
         .join[hidden], .chat[hidden] { display: none; }
-        label { display: grid; gap: 4px; color: #c6d8cb; font-size: 12px; }
+        .join {
+          justify-content: center;
+          background:
+            radial-gradient(circle at 14% 18%, #fff 0 7px, transparent 8px),
+            radial-gradient(circle at 82% 26%, #fff 0 11px, transparent 12px),
+            linear-gradient(180deg, #dff2f4 0 46%, #d9edb7 47% 100%);
+        }
+        label { display: grid; gap: 5px; color: #65745b; font-size: 12px; font-weight: 700; }
         input {
           width: 100%; min-height: 36px; padding: 7px 9px;
-          color: #f3fff5; background: #0a110d; border: 1px solid #3c5644;
-          border-radius: 7px; outline: none;
+          color: #4f6045; background: #fffef9; border: 1.5px solid #cbdba9;
+          border-radius: 11px; outline: none;
         }
-        input:focus { border-color: #69c27f; }
-        .primary { color: #09210f; background: #75d38c; border-color: #75d38c; font-weight: 700; }
-        .notice { min-height: 18px; color: #ffcb82; font-size: 11px; overflow-wrap: anywhere; }
+        input:focus { border-color: #92b66d; box-shadow: 0 0 0 3px #a4c87525; }
+        .primary { color: #526945; background: #dceea7; border-color: #b7d486; font-weight: 800; }
+        .notice { min-height: 18px; color: #a96f58; font-size: 11px; overflow-wrap: anywhere; }
+        .chat {
+          position: relative;
+          isolation: isolate;
+          gap: 6px;
+          padding: 8px 8px 7px;
+          background:
+            radial-gradient(ellipse at 8% 96%, #86ad66 0 8%, transparent 8.5%),
+            radial-gradient(ellipse at 92% 94%, #86ad66 0 10%, transparent 10.5%),
+            linear-gradient(180deg, #dceee3 0 17%, #edf5cf 17% 56%, #d9e9a9 56% 100%);
+        }
+        .chat::before {
+          content: "☁  　       ☁";
+          position: absolute; z-index: -1; top: 10px; left: 12px;
+          color: #fffefa; font-size: 24px; letter-spacing: 18px;
+          opacity: .95; white-space: nowrap;
+        }
+        .chat::after {
+          content: "✿  ᴗ  ✿";
+          position: absolute; z-index: -1; right: 7px; bottom: 54px;
+          color: #fff; font-size: 16px;
+          text-shadow: 16px 12px #f7c6ba, -18px 34px #fff2a6, 36px 44px #b6d7a2;
+        }
         .messages {
           display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 7px;
-          overflow-y: auto; margin: 0; padding: 2px; list-style: none;
+          overflow-y: auto; margin: 0; padding: 5px 2px 12px; list-style: none;
         }
         .message {
-          max-width: 92%; align-self: flex-start; padding: 7px 9px;
-          background: #1b2b20; border: 1px solid #2d4635; border-radius: 9px;
+          display: flex; align-items: flex-end; gap: 5px;
+          max-width: 88%; align-self: flex-start;
           overflow-wrap: anywhere;
         }
-        .message.self { align-self: flex-end; background: #1c3b28; }
-        .message-meta { display: flex; justify-content: space-between; gap: 10px; color: #a9d8b3; font-size: 10px; }
-        .message-meta time { flex: 0 0 auto; color: #9eafa3; }
-        .message-text { margin: 3px 0 0; white-space: pre-wrap; }
-        .send { display: flex; gap: 6px; }
-        .send input { flex: 1; min-width: 0; }
-        .chat-tools { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
-        .unread { min-height: 16px; color: #9fe2ad; font-size: 11px; }
+        .message-bubble {
+          min-width: 42px; padding: 7px 9px;
+          background: #fffdf1; border: 1.5px solid #e1dca9;
+          border-radius: 13px 13px 13px 4px;
+          box-shadow: 0 2px 7px #6f795c18;
+          color: #536148;
+        }
+        .message.self { align-self: flex-end; }
+        .message.self .message-bubble {
+          background: #d7e9af; border-color: #bdd68e;
+          border-radius: 13px 13px 4px 13px;
+        }
+        .message-avatar {
+          flex: 0 0 auto; width: 28px; height: 28px;
+          display: grid; place-items: center;
+          background: #fffaf0; border: 2px solid #fff;
+          border-radius: 50%; box-shadow: 0 2px 6px #65734f24;
+          font-size: 16px;
+        }
+        .message.self .message-avatar { order: 2; }
+        .message-meta { display: flex; justify-content: space-between; gap: 8px; color: #859270; font-size: 9px; }
+        .message-meta time { flex: 0 0 auto; color: #9aa48e; }
+        .message-text { margin: 2px 0 0; white-space: pre-wrap; }
+        .unread {
+          min-height: 16px; padding: 0 4px;
+          color: #6f8b58; font-size: 10px; text-align: center;
+        }
+        .chat-tools {
+          display: flex; align-items: center; justify-content: space-between; gap: 6px;
+          padding: 5px 7px; background: #fffdf2cc;
+          border: 1.5px solid #e4ebc9; border-radius: 12px;
+        }
+        .guild-label { color: #7b896d; font-size: 10px; }
+        .chat-tools button { min-height: 26px; padding: 3px 7px; font-size: 10px; }
+        .send {
+          display: flex; gap: 6px; padding: 6px;
+          background: #fffdf2e8; border: 1.5px solid #dde8c2;
+          border-radius: 15px; box-shadow: 0 3px 10px #6c7d5520;
+        }
+        .send input {
+          flex: 1; min-width: 0; border: 0; background: transparent;
+          min-height: 34px;
+        }
+        .send input:focus { box-shadow: none; }
+        .send-button {
+          min-width: 58px; border-radius: 11px;
+          background: #b9d98e; border-color: #a7c97c;
+        }
         .toast {
           position: absolute; right: 0; bottom: calc(100% + 8px);
           max-width: min(340px, calc(100vw - 24px)); padding: 8px 11px;
-          color: #e9f3ec; background: #183b2b; border: 1px solid #69c27f;
-          border-radius: 8px; box-shadow: 0 6px 18px #0008;
+          color: #617153; background: #fffdf4; border: 1.5px solid #b9d69a;
+          border-radius: 12px; box-shadow: 0 6px 18px #0002;
         }
         .toast[hidden] { display: none; }
         @media (max-width: 480px) {
           :host { right: 6px !important; bottom: 6px !important; }
-          .panel { height: min(440px, calc(100vh - 12px)); }
+          .panel { height: min(560px, calc(100vh - 12px)); }
         }
       </style>
       <div class="toast" role="status" hidden></div>
@@ -488,6 +560,14 @@
       item.dataset.messageKey = key;
       if (user && data.uid === user.uid) item.classList.add("self");
 
+      const avatar = createElement(
+        "span",
+        "message-avatar",
+        user && data.uid === user.uid ? "🐻" : "🐰",
+      );
+      avatar.setAttribute("aria-hidden", "true");
+
+      const bubble = createElement("div", "message-bubble");
       const meta = createElement("div", "message-meta");
       const identity = createElement(
         "span",
@@ -500,7 +580,8 @@
       ));
       meta.append(identity, time);
       const text = createElement("p", "message-text", data.text);
-      item.append(meta, text);
+      bubble.append(meta, text);
+      item.append(avatar, bubble);
       messagesList.append(item);
 
       while (messagesList.children.length > MAX_HISTORY) {
