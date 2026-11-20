@@ -8,6 +8,74 @@
   const AUTH_STORAGE_KEY = "web-workflow-utility.guild-chat.auth";
   const PROFILE_STORAGE_KEY = "web-workflow-utility.guild-chat.profile";
   const SOUND_STORAGE_KEY = "web-workflow-utility.guild-chat.sound";
+  const CHAT_TITLE = "😴 Lazy Farm 🌾";
+  const EMOJI_CATEGORIES = [
+    {
+      label: "Động vật nông trại",
+      icon: "🐮",
+      emojis: "🐮 🐄 🐷 🐖 🐗 🐔 🐓 🐣 🐤 🐥 🐑 🐏 🐐 🐴 🫏 🐰 🐇 🦆 🪿 🦃".split(" "),
+    },
+    {
+      label: "Cá, tôm, cua, sinh vật biển",
+      icon: "🐟",
+      emojis: "🐟 🐠 🐡 🦈 🐬 🐳 🐋 🦭 🐙 🦑 🦐 🦞 🦀 🪼 🦪 🐚 🪸".split(" "),
+    },
+    {
+      label: "Côn trùng, sinh vật nhỏ",
+      icon: "🐝",
+      emojis: "🐝 🦋 🐛 🐌 🐞 🦗 🪲 🪳 🦟 🪰 🕷️ 🦂 🪱 🐜".split(" "),
+    },
+    {
+      label: "Động vật hoang dã",
+      icon: "🦁",
+      emojis: "🦁 🐯 🐻 🐼 🐨 🐵 🐒 🦊 🐺 🦝 🦥 🦦 🦨 🦡 🦔 🦓 🦒 🐘 🦛 🦏 🦘 🦙 🦚 🦜 🦢 🦩 🦉 🦅 🐸 🐢 🐍 🦎".split(" "),
+    },
+    {
+      label: "Rau củ, nông sản",
+      icon: "🥕",
+      emojis: "🌽 🥕 🥔 🍠 🧅 🧄 🥬 🥦 🥒 🥑 🍆 🫑 🌶️ 🍄 🥜 🫘 🫛 🥗".split(" "),
+    },
+    {
+      label: "Trái cây",
+      icon: "🍎",
+      emojis: "🍎 🍏 🍐 🍊 🍋 🍌 🍉 🍇 🍓 🫐 🍈 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🥑".split(" "),
+    },
+    {
+      label: "Cây trồng, thiên nhiên",
+      icon: "🌱",
+      emojis: "🌱 🌿 🍀 ☘️ 🌾 🌻 🌼 🌷 🌹 🪻 🪷 🪴 🌳 🌲 🌴 🎋 🍃 🍂 🍁 🌵".split(" "),
+    },
+    {
+      label: "Nhân vật làm avatar",
+      icon: "🧑‍🌾",
+      emojis: "👨‍🌾 👩‍🌾 🧑‍🌾 👨‍🍳 👩‍🍳 👶 👦 👧 👨 👩 👴 👵 🧙 🥷 🤖 👻 🤡 🧛 🧟 🦸".split(" "),
+    },
+    {
+      label: "Cảm xúc, biểu cảm",
+      icon: "😀",
+      emojis: "😀 😃 😄 😁 😆 😂 🤣 😊 😍 🥰 😘 😎 🤔 😴 🥱 😭 😢 😡 🤬 🤪 😜 🥳 🥶 🥵 🫣 🫡 🫠".split(" "),
+    },
+    {
+      label: "Hành động, tương tác",
+      icon: "👍",
+      emojis: "👍 👎 👌 ✌️ 🤝 👏 🙌 💪 🙏 👀 👉 👈 👋 🤟 🫶 ❤️".split(" "),
+    },
+    {
+      label: "Vật phẩm, phần thưởng",
+      icon: "🎁",
+      emojis: "💰 💵 🪙 💎 🎁 🎀 🏆 🥇 🥈 🥉 ⭐ 🌟 ✨ 🔥 💯 🎉 🎊 🎯 🧺 🪣".split(" "),
+    },
+    {
+      label: "Công cụ, hoạt động nông trại",
+      icon: "🚜",
+      emojis: "🚜 🛻 🚚 🛠️ 🔨 🪓 🪚 🧰 🪣 🧹 🏡 🏠 🏕️ 🛖 ⛺".split(" "),
+    },
+    {
+      label: "Thời tiết, môi trường",
+      icon: "☀️",
+      emojis: "☀️ 🌤️ ⛅ 🌥️ ☁️ 🌧️ ⛈️ 🌩️ ❄️ ☃️ 🌈 🌪️ 💧 💦 🌊".split(" "),
+    },
+  ];
   const MAX_HISTORY = 150;
   const MAX_MESSAGE_LENGTH = 500;
   const MIN_NICKNAME_LENGTH = 2;
@@ -95,9 +163,9 @@
     if (typeof request !== "function") {
       throw new Error("Tampermonkey request API chưa được cấu hình.");
     }
-    const launchButton = createElement("button", "guild-chat-launch", "Guild Chat");
+    const launchButton = createElement("button", "guild-chat-launch", CHAT_TITLE);
     launchButton.type = "button";
-    launchButton.setAttribute("aria-label", "Mở Guild Chat");
+    launchButton.setAttribute("aria-label", `Mở ${CHAT_TITLE}`);
     Object.assign(launchButton.style, {
       width: "100%",
       minHeight: "34px",
@@ -125,9 +193,9 @@
         :host { color-scheme: light; font: 13px/1.45 "Trebuchet MS", system-ui, sans-serif; }
         * { box-sizing: border-box; }
         .panel {
-          display: flex; flex-direction: column; width: min(390px, calc(100vw - 24px));
-          height: min(620px, calc(100vh - 24px));
-          min-height: min(430px, calc(100vh - 24px)); overflow: hidden;
+          display: flex; flex-direction: column; width: min(280px, calc(100vw - 24px));
+          height: min(370px, calc(100vh - 24px));
+          min-height: min(340px, calc(100vh - 24px)); overflow: hidden;
           color: #4d5d43; background: #eff8df;
           border: 3px solid #fffdf4; border-radius: 22px;
           box-shadow: 0 14px 38px #4e694a45, 0 3px 0 #b5d69e;
@@ -141,7 +209,7 @@
         }
         .heading { display: grid; gap: 2px; min-width: 0; }
         .heading strong { color: #5f754f; font-size: 15px; letter-spacing: .1px; }
-        .connection { color: #9aa58e; font-size: 10px; }
+        .connection { display: none; }
         .header-actions { display: flex; gap: 5px; }
         button, input { font: inherit; }
         button {
@@ -152,7 +220,6 @@
         button:hover:not(:disabled) { background: #f2f8df; }
         button:disabled { opacity: .6; cursor: wait; }
         .content { display: flex; flex: 1; min-height: 0; flex-direction: column; }
-        .panel.collapsed .content { display: none; }
         .join, .chat { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 9px; padding: 12px; }
         .join[hidden], .chat[hidden] { display: none; }
         .join {
@@ -191,15 +258,20 @@
           position: relative;
           isolation: isolate;
           gap: 6px;
-          padding: 8px 8px 7px;
-          background:
-            linear-gradient(#fff2, #fff2),
-            url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcH3RLgxfasvnGYL7KnczA5dIhRG7yI-Y3zxEMrZ00Gw&s=10")
-              center center / cover no-repeat;
+          padding: 8px 8px 4px;
+          background: #e6efd9;
         }
         .messages {
           display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 7px;
-          overflow-y: auto; margin: 0; padding: 5px 2px 12px; list-style: none;
+          overflow-y: auto; margin: 0; padding: 5px 5px 12px; list-style: none;
+          border-radius: 14px;
+          background-color: #e6efd9;
+          background-image:
+            linear-gradient(rgba(255, 255, 255, .08), rgba(255, 255, 255, .08)),
+            url("https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTcH3RLgxfasvnGYL7KnczA5dIhRG7yI-Y3zxEMrZ00Gw&s=10");
+          background-position: center;
+          background-size: cover;
+          background-repeat: no-repeat;
         }
         .message {
           display: flex; align-items: flex-end; gap: 5px;
@@ -241,20 +313,59 @@
         }
         .guild-label { color: #7b896d; font-size: 10px; }
         .chat-tools button { min-height: 26px; padding: 3px 7px; font-size: 10px; }
+        .composer { position: relative; flex: 0 0 auto; margin-top: auto; }
+        .emoji-picker {
+          position: absolute; right: 0; bottom: calc(100% + 8px); z-index: 3;
+          width: min(260px, calc(100vw - 32px));
+          padding: 7px; background: #fffdf6; border: 1px solid #e4dcae;
+          border-radius: 13px; box-shadow: 0 6px 20px #53614835;
+        }
+        .emoji-picker[hidden] { display: none; }
+        .emoji-tabs {
+          display: flex; gap: 3px; overflow-x: auto; padding: 0 0 6px;
+          border-bottom: 1px solid #ece7cf;
+        }
+        .emoji-tab {
+          flex: 0 0 29px; width: 29px; min-height: 29px; padding: 0;
+          border: 0; background: transparent; font-size: 16px;
+        }
+        .emoji-tab[aria-selected="true"] { background: #e8f0d2; }
+        .emoji-category-title {
+          display: block; margin: 6px 2px 3px; color: #788667;
+          font-size: 10px; font-weight: 700; white-space: nowrap;
+        }
+        .emoji-grid {
+          display: grid; grid-template-columns: repeat(6, 1fr); gap: 2px;
+          max-height: 178px; overflow-y: auto;
+        }
+        .emoji-option {
+          display: grid; place-items: center; width: 100%; min-height: 30px;
+          padding: 0; border: 0; background: transparent; font-size: 18px;
+        }
+        .emoji-option:hover { background: #f3edcf; }
         .send {
-          display: flex; gap: 6px; padding: 6px;
+          display: flex; gap: 5px; padding: 6px;
           background: #fffdf2e8; border: 1.5px solid #dde8c2;
           border-radius: 15px; box-shadow: 0 3px 10px #6c7d5520;
         }
+        .chat-notice:empty { display: none; }
         .send input {
           flex: 1; min-width: 0; border: 0; background: transparent;
           min-height: 34px;
         }
         .send input:focus { box-shadow: none; }
+        .emoji-button {
+          display: grid; place-items: center;
+          width: 34px; min-width: 34px; min-height: 34px; padding: 0;
+          border-color: transparent; background: transparent; font-size: 19px;
+        }
         .send-button {
-          min-width: 58px; border-radius: 11px;
+          display: grid; place-items: center;
+          width: 42px; min-width: 42px; padding: 5px;
+          border-radius: 11px;
           background: #b9d98e; border-color: #a7c97c;
         }
+        .send-button svg { width: 18px; height: 18px; }
         .toast {
           position: absolute; right: 0; bottom: calc(100% + 8px);
           max-width: min(340px, calc(100vw - 24px)); padding: 8px 11px;
@@ -264,18 +375,21 @@
         .toast[hidden] { display: none; }
         @media (max-width: 480px) {
           :host { right: 6px !important; bottom: 6px !important; }
-          .panel { height: min(560px, calc(100vh - 12px)); }
+          .panel {
+            width: min(280px, calc(100vw - 12px));
+            height: min(370px, calc(100vh - 12px));
+            min-height: min(340px, calc(100vh - 12px));
+          }
         }
       </style>
       <div class="toast" role="status" hidden></div>
-      <section class="panel" aria-label="Guild Chat" hidden>
+      <section class="panel" aria-label="${CHAT_TITLE}" hidden>
         <header class="header">
           <div class="heading">
-            <strong>Guild Chat</strong>
+            <strong>${CHAT_TITLE}</strong>
             <span class="connection">Chưa kết nối</span>
           </div>
           <div class="header-actions">
-            <button type="button" class="collapse" aria-label="Thu gọn">−</button>
             <button type="button" class="close" aria-label="Đóng chat">×</button>
           </div>
         </header>
@@ -304,11 +418,24 @@
               <span class="guild-label"></span>
               <button type="button" class="sound"></button>
             </div>
-            <form class="send">
-              <input class="message-input" maxlength="500" autocomplete="off" placeholder="Nhập tin nhắn..." aria-label="Tin nhắn" required>
-              <button type="submit" class="primary send-button">Gửi</button>
-            </form>
             <div class="chat-notice notice" role="status"></div>
+            <div class="composer">
+              <div class="emoji-picker" role="dialog" aria-label="Chọn emoji" hidden>
+                <div class="emoji-tabs" role="tablist" aria-label="Nhóm emoji"></div>
+                <strong class="emoji-category-title"></strong>
+                <div class="emoji-grid" id="emoji-options" role="tabpanel"></div>
+              </div>
+              <form class="send">
+                <input class="message-input" maxlength="500" autocomplete="off" placeholder="Nhập tin nhắn..." aria-label="Tin nhắn" required>
+                <button type="button" class="emoji-button" aria-label="Mở bảng emoji" aria-haspopup="dialog" aria-expanded="false" title="Chọn emoji">🙂</button>
+                <button type="submit" class="primary send-button" aria-label="Gửi tin nhắn" title="Gửi tin nhắn">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M22 2 11 13"></path>
+                    <path d="m22 2-7 20-4-9-9-4 20-7Z"></path>
+                  </svg>
+                </button>
+              </form>
+            </div>
           </section>
         </div>
       </section>
@@ -339,9 +466,16 @@
     const guildLabel = shadow.querySelector(".guild-label");
     const soundButton = shadow.querySelector(".sound");
     const messageInput = shadow.querySelector(".message-input");
+    const emojiButton = shadow.querySelector(".emoji-button");
+    const emojiPicker = shadow.querySelector(".emoji-picker");
+    const emojiTabs = shadow.querySelector(".emoji-tabs");
+    const emojiCategoryTitle = shadow.querySelector(".emoji-category-title");
+    const emojiGrid = shadow.querySelector(".emoji-grid");
     const sendButton = shadow.querySelector(".send-button");
     const chatNotice = shadow.querySelector(".chat-notice");
     const toast = shadow.querySelector(".toast");
+
+    populateEmojiPicker();
 
     let user = null;
     let membership = null;
@@ -354,6 +488,7 @@
     let initialMessagesLoaded = false;
     let unreadCount = 0;
     let soundEnabled = readValue(SOUND_STORAGE_KEY, true) !== false;
+    let audioContext = null;
     let lastSentAt = 0;
     let toastTimer = null;
     const renderedMessageKeys = new Set();
@@ -501,8 +636,8 @@
         ? `${unreadCount} tin nhắn chưa đọc`
         : "";
       launchButton.textContent = unreadCount
-        ? `Guild Chat (${unreadCount})`
-        : "Guild Chat";
+        ? `${CHAT_TITLE} (${unreadCount})`
+        : CHAT_TITLE;
     }
 
     function showToast(message) {
@@ -516,7 +651,7 @@
     }
 
     function isChatVisible() {
-      return !panel.hidden && !panel.classList.contains("collapsed");
+      return !panel.hidden;
     }
 
     function updateSoundButton() {
@@ -524,26 +659,105 @@
       soundButton.setAttribute("aria-pressed", String(soundEnabled));
     }
 
-    function playSound() {
-      if (!soundEnabled) return;
+    function insertEmoji(emoji) {
+      const start = Number.isInteger(messageInput.selectionStart)
+        ? messageInput.selectionStart
+        : messageInput.value.length;
+      const end = Number.isInteger(messageInput.selectionEnd)
+        ? messageInput.selectionEnd
+        : start;
+      messageInput.setRangeText(emoji, start, end, "end");
+      messageInput.focus();
+    }
+
+    function populateEmojiPicker() {
+      for (const [index, category] of EMOJI_CATEGORIES.entries()) {
+        const tab = createElement("button", "emoji-tab", category.icon);
+        tab.type = "button";
+        tab.id = `emoji-tab-${index}`;
+        tab.dataset.categoryIndex = String(index);
+        tab.setAttribute("role", "tab");
+        tab.setAttribute("aria-label", category.label);
+        tab.setAttribute("aria-controls", "emoji-options");
+        tab.setAttribute("aria-selected", "false");
+        tab.title = category.label;
+        tab.tabIndex = index === 0 ? 0 : -1;
+        emojiTabs.append(tab);
+      }
+      selectEmojiCategory(0);
+    }
+
+    function selectEmojiCategory(index) {
+      const category = EMOJI_CATEGORIES[index];
+      if (!category) return;
+
+      emojiCategoryTitle.textContent = category.label;
+      emojiGrid.replaceChildren();
+      emojiGrid.setAttribute("aria-label", category.label);
+      for (const emoji of category.emojis) {
+        const option = createElement("button", "emoji-option", emoji);
+        option.type = "button";
+        option.dataset.emoji = emoji;
+        option.setAttribute("aria-label", emoji);
+        emojiGrid.append(option);
+      }
+
+      for (const [tabIndex, tab] of Array.from(emojiTabs.children).entries()) {
+        const selected = tabIndex === index;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+      }
+      emojiGrid.setAttribute("aria-labelledby", `emoji-tab-${index}`);
+    }
+
+    function getAudioContext() {
       const AudioContextConstructor =
         global.AudioContext || global.webkitAudioContext;
-      if (!AudioContextConstructor) return;
+      if (!AudioContextConstructor) return null;
 
       try {
-        const audio = new AudioContextConstructor();
+        if (!audioContext) audioContext = new AudioContextConstructor();
+        return audioContext;
+      } catch (error) {
+        console.warn("[Web Workflow Utility] Guild Chat audio context failed.", error);
+        return null;
+      }
+    }
+
+    function unlockSound() {
+      const audio = getAudioContext();
+      if (!audio || audio.state !== "suspended") return;
+      audio.resume().catch((error) =>
+        console.warn("[Web Workflow Utility] Guild Chat audio resume failed.", error),
+      );
+    }
+
+    function playSound() {
+      if (!soundEnabled) return;
+      const audio = getAudioContext();
+      if (!audio) return;
+
+      const playTone = () => {
         const oscillator = audio.createOscillator();
         const gain = audio.createGain();
-        oscillator.frequency.value = 740;
-        gain.gain.value = 0.045;
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(880, audio.currentTime);
+        oscillator.frequency.setValueAtTime(660, audio.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.12, audio.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audio.currentTime + 0.24);
         oscillator.connect(gain);
         gain.connect(audio.destination);
         oscillator.start();
-        oscillator.stop(audio.currentTime + 0.12);
-        oscillator.onended = () => void audio.close();
-      } catch (error) {
-        console.warn("[Web Workflow Utility] Guild Chat sound failed.", error);
+        oscillator.stop(audio.currentTime + 0.24);
+      };
+
+      if (audio.state === "suspended") {
+        audio.resume().then(playTone).catch((error) =>
+          console.warn("[Web Workflow Utility] Guild Chat sound failed.", error),
+        );
+        return;
       }
+      playTone();
     }
 
     function validGuildId(value) {
@@ -613,13 +827,13 @@
       }
 
       if (initialMessagesLoaded && user && data.uid !== user.uid) {
+        playSound();
         if (isChatVisible()) {
           messagesList.scrollTop = messagesList.scrollHeight;
         } else {
           unreadCount += 1;
           updateUnread();
           showToast(`Tin nhắn mới từ ${identity.textContent}`);
-          playSound();
         }
       } else {
         messagesList.scrollTop = messagesList.scrollHeight;
@@ -874,6 +1088,7 @@
     }
 
     launchButton.addEventListener("click", () => {
+      unlockSound();
       panel.hidden = !panel.hidden;
       if (!panel.hidden) {
         unreadCount = 0;
@@ -884,19 +1099,6 @@
     shadow.querySelector(".close").addEventListener("click", () => {
       panel.hidden = true;
     });
-    shadow.querySelector(".collapse").addEventListener("click", (event) => {
-      const collapsed = panel.classList.toggle("collapsed");
-      event.currentTarget.textContent = collapsed ? "+" : "−";
-      event.currentTarget.setAttribute(
-        "aria-label",
-        collapsed ? "Mở rộng" : "Thu gọn",
-      );
-      if (!collapsed) {
-        unreadCount = 0;
-        updateUnread();
-        messagesList.scrollTop = messagesList.scrollHeight;
-      }
-    });
     retryButton.addEventListener("click", () => {
       requestConnection().catch(() => {});
     });
@@ -906,11 +1108,52 @@
     shadow.querySelector(".send").addEventListener("submit", (event) => {
       void sendMessage(event);
     });
+    emojiButton.addEventListener("click", () => {
+      emojiPicker.hidden = !emojiPicker.hidden;
+      emojiButton.setAttribute("aria-expanded", String(!emojiPicker.hidden));
+    });
+    emojiTabs.addEventListener("click", (event) => {
+      const tab = event.target.closest(".emoji-tab");
+      if (tab) selectEmojiCategory(Number(tab.dataset.categoryIndex));
+    });
+    emojiTabs.addEventListener("keydown", (event) => {
+      if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+      const tab = event.target.closest(".emoji-tab");
+      if (!tab) return;
+      event.preventDefault();
+      const direction = event.key === "ArrowRight" ? 1 : -1;
+      const currentIndex = Number(tab.dataset.categoryIndex);
+      const nextIndex =
+        (currentIndex + direction + EMOJI_CATEGORIES.length) %
+        EMOJI_CATEGORIES.length;
+      selectEmojiCategory(nextIndex);
+      emojiTabs.children[nextIndex].focus();
+    });
+    emojiPicker.addEventListener("click", (event) => {
+      const option = event.target.closest(".emoji-option");
+      if (!option) return;
+      insertEmoji(option.dataset.emoji);
+      emojiPicker.hidden = true;
+      emojiButton.setAttribute("aria-expanded", "false");
+    });
+    shadow.addEventListener("click", (event) => {
+      if (
+        !emojiPicker.hidden &&
+        !emojiPicker.contains(event.target) &&
+        event.target !== emojiButton
+      ) {
+        emojiPicker.hidden = true;
+        emojiButton.setAttribute("aria-expanded", "false");
+      }
+    });
     soundButton.addEventListener("click", () => {
       soundEnabled = !soundEnabled;
       writeValue(SOUND_STORAGE_KEY, soundEnabled);
       updateSoundButton();
-      if (soundEnabled) playSound();
+      if (soundEnabled) {
+        unlockSound();
+        playSound();
+      }
     });
 
     updateUnread();
