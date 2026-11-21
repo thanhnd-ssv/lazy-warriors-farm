@@ -1653,11 +1653,7 @@
       if (typeof onVisibilityChange === "function") {
         onVisibilityChange(true);
       }
-      requestConnection()
-        .then(() => {
-          if (!panel.hidden && !reloadButton.disabled) startMessageListener();
-        })
-        .catch(() => {});
+      reloadButton.click();
     });
     reloadButton.addEventListener("click", () => {
       void reloadChat();
@@ -1720,7 +1716,6 @@
       }
     });
     updateUnread();
-    void reloadChat();
   }
 
   global.GuildChatModule = Object.freeze({ mount });
