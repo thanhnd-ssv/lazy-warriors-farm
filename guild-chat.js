@@ -820,7 +820,6 @@
     const joinNotice = shadow.querySelector(".join-notice");
     const chatView = shadow.querySelector(".chat");
     const messagesList = shadow.querySelector(".messages");
-    const unreadLabel = shadow.querySelector(".unread");
     const messageInput = shadow.querySelector(".message-input");
     const emojiButton = shadow.querySelector(".emoji-button");
     const emojiPicker = shadow.querySelector(".emoji-picker");
@@ -1124,9 +1123,6 @@
     }
 
     function updateUnread() {
-      unreadLabel.textContent = unreadCount
-        ? `${unreadCount} tin nhắn chưa đọc`
-        : "";
       launchUnread.textContent = unreadCount > 99 ? "99+" : String(unreadCount);
       launchUnread.hidden = unreadCount === 0;
       const unreadSummary = unreadCount
