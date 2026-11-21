@@ -313,17 +313,6 @@
           font-size: 24px; line-height: 1; cursor: pointer;
         }
         .guild-chat-launch[hidden] { display: none; }
-        .guild-chat-launch[aria-busy="true"] { opacity: .8; cursor: wait; }
-        .guild-chat-launch[aria-busy="true"]::after {
-          position: absolute; inset: -4px; content: "";
-          border: 2px solid transparent; border-top-color: #fff;
-          border-right-color: #fff; border-radius: 50%;
-          animation: launcher-spin .8s linear infinite;
-        }
-        @keyframes launcher-spin { to { transform: rotate(360deg); } }
-        @media (prefers-reduced-motion: reduce) {
-          .guild-chat-launch[aria-busy="true"]::after { animation: none; }
-        }
         .launch-unread {
           position: absolute; top: -3px; right: -4px;
           display: grid; place-items: center; min-width: 20px; height: 20px;
@@ -1377,6 +1366,7 @@
         connectionLabel.textContent = "Đã kết nối · làm mới mỗi 3 giây";
         setNotice(chatNotice, "");
         lastMessagePollError = null;
+        if (isChatVisible()) startMessageListener();
       } catch (error) {
         if (!chatView.hidden) {
           setNotice(chatNotice, `Làm mới chat thất bại: ${error.message}`);
@@ -1655,24 +1645,19 @@
       }
     }
 
-    function showChatPanel() {
+    launchButton.addEventListener("click", () => {
       panel.hidden = false;
       launchButton.hidden = true;
-      launchButton.disabled = false;
-      launchButton.removeAttribute("aria-busy");
-      if (membership && user) startMessageListener();
-    }
-
-    launchButton.addEventListener("click", () => {
-      if (launchButton.disabled) return;
-      launchButton.disabled = true;
-      launchButton.setAttribute("aria-busy", "true");
       unreadCount = 0;
       updateUnread();
       if (typeof onVisibilityChange === "function") {
         onVisibilityChange(true);
       }
-      requestConnection().then(showChatPanel, showChatPanel);
+      requestConnection()
+        .then(() => {
+          if (!panel.hidden && !reloadButton.disabled) startMessageListener();
+        })
+        .catch(() => {});
     });
     reloadButton.addEventListener("click", () => {
       void reloadChat();
@@ -1735,7 +1720,7 @@
       }
     });
     updateUnread();
-    requestConnection().catch(() => {});
+    void reloadChat();
   }
 
   global.GuildChatModule = Object.freeze({ mount });
