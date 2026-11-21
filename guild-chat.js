@@ -1653,7 +1653,7 @@
       if (typeof onVisibilityChange === "function") {
         onVisibilityChange(true);
       }
-      reloadButton.click();
+      void reloadChat();
     });
     reloadButton.addEventListener("click", () => {
       void reloadChat();
