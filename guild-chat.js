@@ -590,7 +590,7 @@
           min-width: 0; max-width: calc(100% - 37px);
         }
         .message-bubble {
-          min-width: 42px; max-width: calc(100% - 34px); padding: 8px 10px;
+          min-width: 42px; max-width: 100%; padding: 8px 10px;
           background: var(--incoming-bg); border: 1.5px solid var(--incoming-border);
           border-radius: 13px 13px 13px 4px;
           box-shadow: 0 2px 7px #6f795c18;
@@ -615,11 +615,9 @@
         .message-meta { display: flex; min-width: 0; color: var(--meta-text); font-size: 10px; }
         .message-author { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
         .message-time {
-          flex: 0 0 auto; align-self: flex-end; margin: 0 0 3px; padding: 3px 4px;
-          color: var(--meta-text); background: rgba(255, 255, 255, .9);
-          border: 1px solid rgba(255, 255, 255, .8); border-radius: 8px;
-          box-shadow: 0 1px 3px #27303a30;
-          font-size: 9px; line-height: 1; white-space: nowrap;
+          display: block; width: 100%; margin-top: 3px;
+          color: var(--time-text); opacity: .8;
+          font-size: 8px; line-height: 1; text-align: right; white-space: nowrap;
         }
         .message-text { margin: 2px 0 0; font-size: 14px; white-space: pre-wrap; }
         .unread {
@@ -1216,7 +1214,7 @@
       joinForm.hidden = true;
       chatView.hidden = false;
       setNotice(joinNotice, "");
-      startMessageListener();
+      if (isChatVisible()) startMessageListener();
     }
 
     function appendMessage(key, data) {
@@ -1281,7 +1279,8 @@
       const text = createElement("p", "message-text", data.text);
       bubble.append(meta, text);
       const body = createElement("div", "message-body");
-      body.append(bubble, time);
+      bubble.append(time);
+      body.append(bubble);
       item.append(avatar, body);
       messagesList.append(item);
 
@@ -1653,7 +1652,11 @@
         if (typeof onVisibilityChange === "function") {
           onVisibilityChange(true);
         }
-        requestConnection().catch(() => {});
+        requestConnection()
+          .then(() => {
+            if (!panel.hidden) startMessageListener();
+          })
+          .catch(() => {});
       }
     });
     reloadButton.addEventListener("click", () => {
@@ -1717,6 +1720,7 @@
       }
     });
     updateUnread();
+    requestConnection().catch(() => {});
   }
 
   global.GuildChatModule = Object.freeze({ mount });
