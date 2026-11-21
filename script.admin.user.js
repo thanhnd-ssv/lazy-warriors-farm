@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Web Workflow Utility
 // @namespace    local.at-sp.notification-monitor
-// @version      2.78.29
+// @version      2.78.30
 // @description  Automates farm tasks, neighbor help, games, restaurant, ranch, and mythical beast actions.
 // @match        https://at-sp.ssvhue.work/*
 // @require      https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/guild-chat.js
@@ -229,7 +229,7 @@
   const EXPLORATION_PLACE_STORAGE_KEY = "at-sp.exploration-place";
   const EXPLORATION_PLACE_SECOND_STORAGE_KEY = "at-sp.exploration-place-second";
   const EXPLORATION_PLACE_THIRD_STORAGE_KEY = "at-sp.exploration-place-third";
-  const CONTROL_POSITION_STORAGE_KEY = "at-sp.control-position-v2";
+  const CONTROL_POSITION_STORAGE_KEY = "at-sp.control-position-v3";
   const FEATURE_TOGGLE_STORAGE_PREFIX = "at-sp.feature.";
   const AUTOMATION_SCHEDULE_TOGGLE_KEY = "automationSchedule";
   const GAME_GEMINI_KEY_STORAGE_KEY = "at-sp.games.gemini-key";
@@ -3293,9 +3293,9 @@
   const expandButton = document.createElement("button");
   expandButton.type = "button";
   expandButton.textContent = "⭐";
-  expandButton.setAttribute("aria-label", "Mở bảng điều khiển");
-  expandButton.setAttribute("aria-expanded", "false");
-  expandButton.title = "Mở bảng điều khiển";
+  expandButton.setAttribute("aria-label", "Thu gọn bảng điều khiển");
+  expandButton.setAttribute("aria-expanded", "true");
+  expandButton.title = "Thu gọn bảng điều khiển";
   Object.assign(expandButton.style, {
     display: "grid",
     placeItems: "center",
@@ -3310,7 +3310,30 @@
     cursor: "pointer",
     lineHeight: "1",
   });
-  panelHeader.append(dragIcon, panelHeading, expandButton);
+  const updateLink = document.createElement("a");
+  updateLink.href =
+    "https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.user.js";
+  updateLink.target = "_blank";
+  updateLink.rel = "noopener noreferrer";
+  updateLink.textContent = "↻";
+  updateLink.setAttribute("aria-label", "Cập nhật userscript");
+  updateLink.title = "Cập nhật userscript";
+  Object.assign(updateLink.style, {
+    display: "grid",
+    placeItems: "center",
+    flex: "0 0 26px",
+    width: "26px",
+    height: "26px",
+    padding: "0",
+    border: "1px solid #d5e1d6",
+    borderRadius: "7px",
+    color: "#157347",
+    background: "#fff",
+    font: "18px/1 system-ui, sans-serif",
+    textDecoration: "none",
+    cursor: "pointer",
+  });
+  panelHeader.append(dragIcon, panelHeading, updateLink, expandButton);
 
   const panelContent = document.createElement("div");
   Object.assign(panelContent.style, {
@@ -3384,32 +3407,7 @@
   }
   intervalControl.append(intervalSelect);
 
-  const updateLink = document.createElement("a");
-  updateLink.href =
-    "https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.user.js";
-  updateLink.target = "_blank";
-  updateLink.rel = "noopener noreferrer";
-  updateLink.textContent = "Cập nhật userscript";
-  updateLink.title = "Mở bản cập nhật trên Tampermonkey";
-  Object.assign(updateLink.style, {
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    width: "100%",
-    minHeight: "30px",
-    margin: "0",
-    padding: "6px 8px",
-    border: "1px solid #d5e1d6",
-    borderRadius: "10px",
-    color: "#157347",
-    background: "#fff",
-    font: "600 12px system-ui, sans-serif",
-    textDecoration: "none",
-    cursor: "pointer",
-  });
-  setCompactSpacing(updateLink, "6px 8px");
-
-  commonSettings.append(control, intervalControl, updateLink);
+  commonSettings.append(control, intervalControl);
 
   const settingsTabs = document.createElement("div");
   settingsTabs.setAttribute("role", "tablist");
@@ -4303,7 +4301,7 @@
       "z-index": "2147483647",
       display: "grid",
       "box-sizing": "border-box",
-      width: expanded ? "min(270px, calc(100vw - 16px))" : "22px",
+      width: expanded ? "min(270px, calc(100vw - 72px))" : "22px",
       height: expanded ? "auto" : "22px",
       "max-height": expanded ? "calc(100vh - 16px)" : "22px",
       gap: expanded ? "7px" : "0",
@@ -4334,6 +4332,15 @@
     });
     setImportantStyles(panelHeading, {
       display: expanded ? "flex" : "none",
+    });
+    setImportantStyles(updateLink, {
+      display: expanded ? "grid" : "none",
+      "box-sizing": "border-box",
+      "flex": "0 0 26px",
+      width: "26px",
+      height: "26px",
+      margin: "0",
+      padding: "0",
     });
     setImportantStyles(expandButton, {
       appearance: "none",
@@ -4407,7 +4414,7 @@
   }
 
   panelHeader.addEventListener("pointerdown", (event) => {
-    if (event.target.closest("button")) return;
+    if (event.target.closest("button, a")) return;
     if (event.button !== 0 && event.pointerType !== "touch") return;
     const bounds = controlPanel.getBoundingClientRect();
     dragState = {
@@ -4467,8 +4474,7 @@
     saveControlPosition(position.left, position.top);
   });
 
-  expandButton.addEventListener("click", () => {
-    const expanded = expandButton.getAttribute("aria-expanded") !== "true";
+  function setControlPanelExpanded(expanded) {
     expandButton.setAttribute("aria-expanded", String(expanded));
     expandButton.setAttribute(
       "aria-label",
@@ -4479,6 +4485,29 @@
       : "Mở bảng điều khiển";
     expandButton.textContent = "⭐";
     applyPanelAppearance(expanded);
+  }
+  let restoreExpandedControlPanelAfterChat = false;
+  function handleGuildChatVisibilityChange(chatOpen) {
+    if (chatOpen) {
+      if (window.innerWidth > 580) return;
+      restoreExpandedControlPanelAfterChat =
+        expandButton.getAttribute("aria-expanded") === "true";
+      if (restoreExpandedControlPanelAfterChat) {
+        setControlPanelExpanded(false);
+      }
+      return;
+    }
+    if (
+      restoreExpandedControlPanelAfterChat &&
+      expandButton.getAttribute("aria-expanded") !== "true"
+    ) {
+      setControlPanelExpanded(true);
+    }
+    restoreExpandedControlPanelAfterChat = false;
+  }
+  expandButton.addEventListener("click", () => {
+    restoreExpandedControlPanelAfterChat = false;
+    setControlPanelExpanded(expandButton.getAttribute("aria-expanded") !== "true");
   });
   expandButton.addEventListener("mouseenter", () => {
     if (expandButton.getAttribute("aria-expanded") !== "true") {
@@ -4490,7 +4519,7 @@
       expandButton.style.setProperty("opacity", "0.28", "important");
     }
   });
-  applyPanelAppearance(false);
+  applyPanelAppearance(true);
   panelContent.append(settingsTabs, settingsPanels);
   controlPanel.append(panelHeader, panelContent);
 
@@ -4765,10 +4794,10 @@
   if (globalThis.GuildChatModule) {
     try {
       globalThis.GuildChatModule.mount({
-        container: commonSettings,
         getValue: (key, fallback) => GM_getValue(key, fallback),
         setValue: (key, value) => GM_setValue(key, value),
         request: (options) => GM_xmlhttpRequest(options),
+        onVisibilityChange: handleGuildChatVisibilityChange,
       });
     } catch (error) {
       console.error(
