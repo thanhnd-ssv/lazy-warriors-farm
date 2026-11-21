@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Web Workflow Utility
 // @namespace    local.at-sp.notification-monitor
-// @version      2.78.30
-// @description  Automates farm tasks, neighbor help, games, restaurant, ranch, and mythical beast actions.
+// @version      2.78.33
+// @description  Guild Chat for SSV Farm.
 // @match        https://at-sp.ssvhue.work/*
 // @require      https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/guild-chat.js
 // @updateURL    https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.meta.js

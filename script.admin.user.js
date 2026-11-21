@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Web Workflow Utility
 // @namespace    local.at-sp.notification-monitor
-// @version      2.78.30
+// @version      2.78.33
 // @description  Automates farm tasks, neighbor help, games, restaurant, ranch, and mythical beast actions.
 // @match        https://at-sp.ssvhue.work/*
 // @require      https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/guild-chat.js
@@ -3310,30 +3310,7 @@
     cursor: "pointer",
     lineHeight: "1",
   });
-  const updateLink = document.createElement("a");
-  updateLink.href =
-    "https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.user.js";
-  updateLink.target = "_blank";
-  updateLink.rel = "noopener noreferrer";
-  updateLink.textContent = "↻";
-  updateLink.setAttribute("aria-label", "Cập nhật userscript");
-  updateLink.title = "Cập nhật userscript";
-  Object.assign(updateLink.style, {
-    display: "grid",
-    placeItems: "center",
-    flex: "0 0 26px",
-    width: "26px",
-    height: "26px",
-    padding: "0",
-    border: "1px solid #d5e1d6",
-    borderRadius: "7px",
-    color: "#157347",
-    background: "#fff",
-    font: "18px/1 system-ui, sans-serif",
-    textDecoration: "none",
-    cursor: "pointer",
-  });
-  panelHeader.append(dragIcon, panelHeading, updateLink, expandButton);
+  panelHeader.append(dragIcon, panelHeading, expandButton);
 
   const panelContent = document.createElement("div");
   Object.assign(panelContent.style, {
@@ -4333,15 +4310,6 @@
     setImportantStyles(panelHeading, {
       display: expanded ? "flex" : "none",
     });
-    setImportantStyles(updateLink, {
-      display: expanded ? "grid" : "none",
-      "box-sizing": "border-box",
-      "flex": "0 0 26px",
-      width: "26px",
-      height: "26px",
-      margin: "0",
-      padding: "0",
-    });
     setImportantStyles(expandButton, {
       appearance: "none",
       "-webkit-appearance": "none",
@@ -4798,6 +4766,8 @@
         setValue: (key, value) => GM_setValue(key, value),
         request: (options) => GM_xmlhttpRequest(options),
         onVisibilityChange: handleGuildChatVisibilityChange,
+        updateUrl:
+          "https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.admin.user.js",
       });
     } catch (error) {
       console.error(

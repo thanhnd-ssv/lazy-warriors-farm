@@ -18,10 +18,11 @@
   const PROFILE_STORAGE_KEY = "web-workflow-utility.guild-chat.profile";
   const CHAT_TITLE = "😴 Lazy Farm 🌾";
   const CHARACTER_AVATARS = [
-    "👨‍🌾", "👩‍🌾", "🧑", "👨‍🍳", "👩‍🍳", "👨", "👩", "👴",
+    "👨‍🌾", "👩‍🌾", "🧑", "👩‍🍳", "👨", "👩", "👴",
     "👵", "👦", "👧", "👶", "🤡", "🧙", "🧛", "🧟", "👽", "🐷",
     "🐶", "🐱", "🐰", "🐟", "🐼", "🦄",
   ];
+  const LEGACY_CHARACTER_AVATARS = ["👨‍🍳"];
   const EMOJI_CATEGORIES = [
     {
       label: "Biểu cảm",
@@ -239,7 +240,11 @@
   }
 
   function isCharacterAvatar(value) {
-    return typeof value === "string" && CHARACTER_AVATARS.includes(value);
+    return (
+      typeof value === "string" &&
+      (CHARACTER_AVATARS.includes(value) ||
+        LEGACY_CHARACTER_AVATARS.includes(value))
+    );
   }
 
   function randomCharacterAvatar() {
@@ -254,9 +259,27 @@
     return CHARACTER_AVATARS[hash % CHARACTER_AVATARS.length];
   }
 
-  function mount({ getValue, setValue, request, onVisibilityChange }) {
+  function mount({
+    getValue,
+    setValue,
+    request,
+    onVisibilityChange,
+    updateUrl,
+  }) {
     if (typeof request !== "function") {
       throw new Error("Tampermonkey request API chưa được cấu hình.");
+    }
+    let updateLinkUrl;
+    try {
+      updateLinkUrl = new global.URL(updateUrl);
+    } catch (error) {
+      throw new Error("URL cập nhật userscript chưa được cấu hình hợp lệ.");
+    }
+    if (
+      updateLinkUrl.protocol !== "https:" ||
+      updateLinkUrl.hostname !== "raw.githubusercontent.com"
+    ) {
+      throw new Error("URL cập nhật userscript phải dùng raw.githubusercontent.com.");
     }
 
     const host = document.createElement("div");
@@ -314,7 +337,7 @@
           --send-bg: #b9d98e;
           --send-border: #a7c97c;
           --send-text: #526945;
-          display: flex; flex-direction: column; width: min(280px, calc(100vw - 24px));
+          position: relative; display: flex; flex-direction: column; width: min(280px, calc(100vw - 24px));
           height: min(370px, calc(100vh - 24px));
           min-height: min(340px, calc(100vh - 24px)); overflow: hidden;
           color: #4d5d43; background-color: var(--panel-bg);
@@ -413,6 +436,15 @@
         .heading strong { color: var(--header-text); font-size: 15px; letter-spacing: .1px; }
         .connection { display: none; }
         .header-actions { display: flex; gap: 5px; }
+        .header-actions .update {
+          display: grid; place-items: center;
+          width: 32px; height: 32px; min-height: 32px; padding: 0;
+          color: var(--close-text); background: var(--close-bg);
+          border: 1.5px solid var(--close-border); border-radius: 10px;
+          font: 18px/1 system-ui, sans-serif; text-decoration: none;
+        }
+        .header-actions .update[hidden] { display: none; }
+        .header-actions .update:hover { filter: brightness(.97); }
         button, input { font: inherit; }
         button {
           min-height: 32px; padding: 5px 10px; color: #617153;
@@ -432,6 +464,12 @@
         }
         .join, .chat { display: flex; flex: 1; min-height: 0; flex-direction: column; gap: 9px; padding: 12px; }
         .join[hidden], .chat[hidden] { display: none; }
+        .connection-loading {
+          display: grid; flex: 1; place-items: center; padding: 24px;
+          color: #65745b; background: rgba(255, 253, 244, .88);
+          border-radius: 16px; font-size: 12px; text-align: center;
+        }
+        .connection-loading[hidden] { display: none; }
         .join {
           justify-content: center; overflow-y: auto;
           padding: 18px;
@@ -457,9 +495,37 @@
         .avatar-section { display: grid; gap: 5px; }
         .avatar-label { display: flex; justify-content: space-between; gap: 6px; color: #65745b; font-size: 11px; font-weight: 700; }
         .avatar-hint { color: #89957b; font-size: 10px; font-weight: 400; }
-        .avatar-options { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 4px; }
+        .avatar-trigger {
+          display: flex; align-items: center; gap: 8px; width: 100%; min-height: 40px;
+          padding: 5px 9px; color: #526148; background: #fffef9;
+          border: 1.5px solid #cbdba9; border-radius: 12px; text-align: left;
+        }
+        .avatar-trigger-preview {
+          display: grid; flex: 0 0 27px; place-items: center;
+          width: 27px; height: 27px; background: #e6f2d2;
+          border-radius: 50%; font-size: 18px; line-height: 1;
+        }
+        .avatar-trigger-label { flex: 1; font-size: 12px; }
+        .avatar-trigger-chevron { color: #89957b; font-size: 12px; }
+        .avatar-popover {
+          position: absolute; inset: 0; z-index: 4;
+          display: grid; place-items: center; padding: 14px;
+          background: rgba(32, 43, 34, .42); border-radius: 19px;
+        }
+        .avatar-popover[hidden] { display: none; }
+        .avatar-dialog {
+          display: grid; gap: 10px; width: min(270px, 100%);
+          max-height: 100%; overflow-y: auto; padding: 12px;
+          color: #526148; background: #fffdf4;
+          border: 1px solid #e1e9ce; border-radius: 16px;
+          box-shadow: 0 10px 28px #26322540;
+        }
+        .avatar-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+        .avatar-dialog-title { font-size: 13px; }
+        .avatar-dialog-close { width: 28px; min-width: 28px; min-height: 28px; padding: 0; }
+        .avatar-options { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 5px; }
         .avatar-option {
-          min-width: 0; min-height: 28px; padding: 0; font-size: 17px; line-height: 1;
+          min-width: 0; min-height: 34px; padding: 0; font-size: 19px; line-height: 1;
         }
         .avatar-option[aria-pressed="true"] {
           background: #e6f2d2; border-color: #85b36c;
@@ -472,8 +538,7 @@
         }
         input:focus { border-color: #92b66d; box-shadow: 0 0 0 3px #a4c87525; }
         .primary { color: #526945; background: #dceea7; border-color: #b7d486; font-weight: 800; }
-        .join-button, .retry { width: 100%; min-height: 38px; }
-        .retry { background: #fff; }
+        .join-button { width: 100%; min-height: 38px; }
         .notice { min-height: 18px; color: #a96f58; font-size: 11px; overflow-wrap: anywhere; }
         .chat {
           position: relative;
@@ -490,31 +555,36 @@
         }
         .message {
           display: flex; align-items: flex-end; gap: 5px;
-          max-width: 88%; align-self: flex-start;
+          width: 100%; max-width: 100%; align-self: flex-start;
           overflow-wrap: anywhere;
         }
         .message.group-continuation { margin-top: -5px; }
         .message.group-continuation .message-author { display: none; }
-        .message.group-continuation .message-meta { justify-content: flex-end; }
+        .message.group-continuation .message-meta { display: none; }
         .message.group-continuation:not(.self) .message-bubble {
           border-top-left-radius: 5px;
         }
         .message.self.group-continuation .message-bubble {
           border-top-right-radius: 5px;
         }
+        .message-body {
+          display: flex; align-items: flex-end; gap: 4px;
+          min-width: 0; max-width: calc(100% - 37px);
+        }
         .message-bubble {
-          min-width: 42px; padding: 8px 10px;
+          min-width: 42px; max-width: calc(100% - 34px); padding: 8px 10px;
           background: var(--incoming-bg); border: 1.5px solid var(--incoming-border);
           border-radius: 13px 13px 13px 4px;
           box-shadow: 0 2px 7px #6f795c18;
           color: var(--incoming-text);
         }
-        .message.self { align-self: flex-end; }
+        .message.self { align-self: flex-end; justify-content: flex-end; }
         .message.self .message-bubble {
           background: var(--outgoing-bg); border-color: var(--outgoing-border);
           border-radius: 13px 13px 4px 13px;
           color: var(--outgoing-text);
         }
+        .message.self .message-body { justify-content: flex-end; }
         .message-avatar {
           flex: 0 0 auto; width: 32px; height: 32px;
           display: grid; place-items: center;
@@ -524,9 +594,15 @@
         }
         .message-avatar.is-hidden { visibility: hidden; }
         .message.self .message-avatar { order: 2; }
-        .message-meta { display: flex; justify-content: space-between; gap: 8px; min-width: 0; color: var(--meta-text); font-size: 10px; }
+        .message-meta { display: flex; min-width: 0; color: var(--meta-text); font-size: 10px; }
         .message-author { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; font-weight: 700; }
-        .message-meta time { flex: 0 0 auto; color: var(--time-text); }
+        .message-time {
+          flex: 0 0 auto; align-self: flex-end; margin: 0 0 3px; padding: 3px 4px;
+          color: var(--meta-text); background: rgba(255, 255, 255, .9);
+          border: 1px solid rgba(255, 255, 255, .8); border-radius: 8px;
+          box-shadow: 0 1px 3px #27303a30;
+          font-size: 9px; line-height: 1; white-space: nowrap;
+        }
         .message-text { margin: 2px 0 0; font-size: 14px; white-space: pre-wrap; }
         .unread {
           min-height: 16px; padding: 0 4px;
@@ -616,11 +692,13 @@
             <span class="connection">Chưa kết nối</span>
           </div>
           <div class="header-actions">
+            <a class="update" aria-label="Cập nhật userscript" title="Cập nhật userscript" target="_blank" rel="noopener noreferrer" hidden>↻</a>
             <button type="button" class="close" aria-label="Đóng chat">×</button>
           </div>
         </header>
         <div class="content">
-          <form class="join">
+          <div class="connection-loading" role="status">Đang khôi phục phiên chat...</div>
+          <form class="join" hidden>
             <div class="join-card">
               <label>Nickname
                 <input class="nickname" minlength="2" maxlength="12" autocomplete="nickname" required>
@@ -631,12 +709,15 @@
               <div class="avatar-section">
                 <div class="avatar-label">
                   <span>Avatar nhân vật</span>
-                  <span class="avatar-hint">Bỏ qua để chọn ngẫu nhiên</span>
+                  <span class="avatar-hint">Tùy chọn</span>
                 </div>
-                <div class="avatar-options" role="group" aria-label="Chọn avatar nhân vật"></div>
+                <button type="button" class="avatar-trigger" aria-haspopup="dialog" aria-expanded="false">
+                  <span class="avatar-trigger-preview" aria-hidden="true">🎲</span>
+                  <span class="avatar-trigger-label">Ngẫu nhiên</span>
+                  <span class="avatar-trigger-chevron" aria-hidden="true">▾</span>
+                </button>
               </div>
               <button type="submit" class="primary join-button">Vào hội</button>
-              <button type="button" class="retry">Thử kết nối lại</button>
               <div class="join-notice notice" role="status"></div>
             </div>
           </form>
@@ -662,6 +743,16 @@
             </div>
           </section>
         </div>
+        <div class="avatar-popover" hidden>
+          <section class="avatar-dialog" role="dialog" aria-modal="true" aria-labelledby="avatar-dialog-title">
+            <div class="avatar-dialog-header">
+              <strong class="avatar-dialog-title" id="avatar-dialog-title">Chọn avatar nhân vật</strong>
+              <button type="button" class="avatar-dialog-close" aria-label="Đóng chọn avatar">×</button>
+            </div>
+            <span class="avatar-hint">Bỏ qua để chọn ngẫu nhiên</span>
+            <div class="avatar-options" role="group" aria-label="Chọn avatar nhân vật"></div>
+          </section>
+        </div>
       </section>
     `;
     const inlineStyle = shadow.querySelector("style");
@@ -677,17 +768,25 @@
     document.body.append(host);
 
     const panel = shadow.querySelector(".panel");
+    const updateLink = shadow.querySelector(".header-actions .update");
+    updateLink.href = updateLinkUrl.href;
+    updateLink.hidden = false;
     const launchButton = shadow.querySelector(".guild-chat-launch");
     const launchUnread = shadow.querySelector(".launch-unread");
     const content = shadow.querySelector(".content");
+    const connectionLoading = shadow.querySelector(".connection-loading");
     const connectionLabel = shadow.querySelector(".connection");
     const joinForm = shadow.querySelector(".join");
     const nicknameInput = shadow.querySelector(".nickname");
     const inviteCodeInput = shadow.querySelector(".invite-code");
     const avatarOptions = shadow.querySelector(".avatar-options");
+    const avatarTrigger = shadow.querySelector(".avatar-trigger");
+    const avatarTriggerPreview = shadow.querySelector(".avatar-trigger-preview");
+    const avatarTriggerLabel = shadow.querySelector(".avatar-trigger-label");
+    const avatarPopover = shadow.querySelector(".avatar-popover");
+    const avatarDialogClose = shadow.querySelector(".avatar-dialog-close");
     const joinButton = shadow.querySelector(".join-button");
     const joinNotice = shadow.querySelector(".join-notice");
-    const retryButton = shadow.querySelector(".retry");
     const chatView = shadow.querySelector(".chat");
     const messagesList = shadow.querySelector(".messages");
     const unreadLabel = shadow.querySelector(".unread");
@@ -702,6 +801,28 @@
     const toast = shadow.querySelector(".toast");
 
     let selectedAvatar = null;
+    function updateAvatarTrigger() {
+      avatarTriggerPreview.textContent = selectedAvatar || "🎲";
+      avatarTriggerLabel.textContent = selectedAvatar
+        ? "Avatar đã chọn"
+        : "Chọn avatar";
+      avatarTrigger.setAttribute(
+        "aria-label",
+        selectedAvatar
+          ? `Avatar đã chọn: ${selectedAvatar}`
+          : "Chọn avatar; bỏ qua để chọn ngẫu nhiên",
+      );
+      avatarTrigger.title = selectedAvatar
+        ? `Avatar đã chọn: ${selectedAvatar}`
+        : "Bỏ qua để chọn avatar ngẫu nhiên";
+    }
+
+    function closeAvatarPicker(restoreFocus) {
+      avatarPopover.hidden = true;
+      avatarTrigger.setAttribute("aria-expanded", "false");
+      if (restoreFocus) avatarTrigger.focus();
+    }
+
     const randomAvatarButton = createElement("button", "avatar-option", "🎲");
     randomAvatarButton.type = "button";
     randomAvatarButton.setAttribute("aria-label", "Chọn avatar ngẫu nhiên");
@@ -726,6 +847,23 @@
       for (const button of avatarOptions.children) {
         button.setAttribute("aria-pressed", String(button === option));
       }
+      updateAvatarTrigger();
+      closeAvatarPicker(true);
+    });
+    updateAvatarTrigger();
+    avatarTrigger.addEventListener("click", () => {
+      avatarPopover.hidden = false;
+      avatarTrigger.setAttribute("aria-expanded", "true");
+      const selectedOption = avatarOptions.querySelector(
+        'button[aria-pressed="true"]',
+      );
+      if (selectedOption) selectedOption.focus();
+    });
+    avatarDialogClose.addEventListener("click", () => {
+      closeAvatarPicker(true);
+    });
+    avatarPopover.addEventListener("click", (event) => {
+      if (event.target === avatarPopover) closeAvatarPicker(true);
     });
 
     populateEmojiPicker();
@@ -794,30 +932,26 @@
     let toastTimer = null;
     const renderedMessageKeys = new Set();
 
-    function readValue(key, fallback) {
+    async function readValue(key, fallback) {
       try {
-        const value = getValue(key, fallback);
+        const value = await getValue(key, fallback);
         return value === undefined ? fallback : value;
       } catch (error) {
         console.error("[Web Workflow Utility] Guild Chat storage read failed.", error);
-        return fallback;
+        throw error;
       }
     }
 
-    function writeValue(key, value) {
+    async function writeValue(key, value) {
       try {
-        const result = setValue(key, value);
-        if (result && typeof result.catch === "function") {
-          result.catch((error) =>
-            console.error("[Web Workflow Utility] Guild Chat storage write failed.", error),
-          );
-        }
+        await setValue(key, value);
       } catch (error) {
         console.error("[Web Workflow Utility] Guild Chat storage write failed.", error);
+        throw error;
       }
     }
 
-    function saveAuthTokens(result, uid) {
+    async function saveAuthTokens(result, uid) {
       const idToken = result && (result.id_token || result.idToken);
       const refreshToken = result && (result.refresh_token || result.refreshToken);
       const expiresIn = result && (result.expires_in || result.expiresIn);
@@ -842,7 +976,7 @@
       idTokenExpiresAt =
         Date.now() + Math.max(Number(expiresIn), 1) * 1000;
       user = { uid: sessionUid };
-      writeValue(AUTH_STORAGE_KEY, authSession);
+      await writeValue(AUTH_STORAGE_KEY, authSession);
     }
 
     async function refreshAuthToken(forceRefresh) {
@@ -870,8 +1004,8 @@
         body,
         { "Content-Type": "application/x-www-form-urlencoded" },
       )
-        .then((result) => {
-          saveAuthTokens(
+        .then(async (result) => {
+          await saveAuthTokens(
             {
               id_token: result && result.id_token,
               refresh_token: result && result.refresh_token,
@@ -1037,6 +1171,7 @@
 
     function showChat(profile) {
       membership = profile;
+      connectionLoading.hidden = true;
       joinForm.hidden = true;
       chatView.hidden = false;
       setNotice(joinNotice, "");
@@ -1061,9 +1196,19 @@
       const item = createElement("li", "message");
       item.dataset.messageKey = key;
       item.dataset.uid = data.uid;
+      const senderName = capitalizeFirstCharacter(data.nickname);
+      const senderAvatar = isCharacterAvatar(data.avatar)
+        ? data.avatar
+        : fallbackCharacterAvatar(data.uid);
+      item.dataset.senderIdentity =
+        `${senderName.normalize("NFC").toLowerCase()}|${senderAvatar}`;
       if (user && data.uid === user.uid) item.classList.add("self");
       const previousMessage = messagesList.lastElementChild;
-      if (previousMessage && previousMessage.dataset.uid === data.uid) {
+      if (
+        previousMessage &&
+        (previousMessage.dataset.uid === data.uid ||
+          previousMessage.dataset.senderIdentity === item.dataset.senderIdentity)
+      ) {
         item.classList.add("group-continuation");
         const previousAvatar = previousMessage.querySelector(".message-avatar");
         if (previousAvatar) previousAvatar.classList.add("is-hidden");
@@ -1072,9 +1217,7 @@
       const avatar = createElement(
         "span",
         "message-avatar",
-        isCharacterAvatar(data.avatar)
-          ? data.avatar
-          : fallbackCharacterAvatar(data.uid),
+        senderAvatar,
       );
       avatar.setAttribute("aria-hidden", "true");
 
@@ -1083,16 +1226,22 @@
       const identity = createElement(
         "span",
         "message-author",
-        capitalizeFirstCharacter(data.nickname),
+        senderName,
       );
-      const time = createElement("time", "", new Date(data.createdAt).toLocaleTimeString(
-        "vi-VN",
-        { hour: "2-digit", minute: "2-digit" },
-      ));
-      meta.append(identity, time);
+      const time = createElement(
+        "time",
+        "message-time",
+        new Date(data.createdAt).toLocaleTimeString("vi-VN", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      );
+      meta.append(identity);
       const text = createElement("p", "message-text", data.text);
       bubble.append(meta, text);
-      item.append(avatar, bubble);
+      const body = createElement("div", "message-body");
+      body.append(bubble, time);
+      item.append(avatar, body);
       messagesList.append(item);
 
       while (messagesList.children.length > MAX_HISTORY) {
@@ -1169,7 +1318,7 @@
     }
 
     async function signIn() {
-      const savedSession = readValue(AUTH_STORAGE_KEY, null);
+      const savedSession = await readValue(AUTH_STORAGE_KEY, null);
       if (
         savedSession &&
         typeof savedSession.uid === "string" &&
@@ -1190,21 +1339,21 @@
           authSession = null;
           currentIdToken = null;
           idTokenExpiresAt = 0;
-          writeValue(AUTH_STORAGE_KEY, null);
-          writeValue(PROFILE_STORAGE_KEY, null);
+          await writeValue(AUTH_STORAGE_KEY, null);
+          await writeValue(PROFILE_STORAGE_KEY, null);
         }
       }
 
       const result = await requestJson(request, "POST", AUTH_SIGN_UP_URL, {
         returnSecureToken: true,
       });
-      saveAuthTokens(result);
-      writeValue(PROFILE_STORAGE_KEY, null);
+      await saveAuthTokens(result);
+      await writeValue(PROFILE_STORAGE_KEY, null);
       return user;
     }
 
     async function loadSavedMembership() {
-      const saved = readValue(PROFILE_STORAGE_KEY, null);
+      const saved = await readValue(PROFILE_STORAGE_KEY, null);
       if (
         !saved ||
         typeof saved !== "object" ||
@@ -1216,7 +1365,7 @@
 
       const data = await databaseGet(memberPath(saved.guildId, user.uid));
       if (!data || typeof data.nickname !== "string") {
-        writeValue(PROFILE_STORAGE_KEY, null);
+        await writeValue(PROFILE_STORAGE_KEY, null);
         return false;
       }
 
@@ -1235,12 +1384,15 @@
         inviteCode: data.inviteCode,
         avatar,
       };
-      writeValue(PROFILE_STORAGE_KEY, { ...profile, uid: user.uid });
+      await writeValue(PROFILE_STORAGE_KEY, { ...profile, uid: user.uid });
       showChat(profile);
       return true;
     }
 
     async function initializeConnection() {
+      connectionLoading.hidden = false;
+      joinForm.hidden = true;
+      chatView.hidden = true;
       connectionLabel.textContent = "Đang kết nối...";
       await signIn();
       if (!user) throw new Error("Firebase Authentication chưa cấp UID.");
@@ -1248,6 +1400,7 @@
 
       const hasMembership = await loadSavedMembership();
       if (!hasMembership) {
+        connectionLoading.hidden = true;
         joinForm.hidden = false;
         chatView.hidden = true;
         setNotice(joinNotice, "Nhập nickname và mã hội để tham gia.");
@@ -1258,8 +1411,11 @@
       if (connectionPromise) return connectionPromise;
       connectionPromise = initializeConnection().catch((error) => {
         connectionPromise = null;
+        connectionLoading.hidden = true;
+        joinForm.hidden = false;
+        chatView.hidden = true;
         connectionLabel.textContent = "Lỗi kết nối";
-        setNotice(joinNotice, `Không kết nối được Firebase: ${error.message}`);
+        setNotice(joinNotice, `Không khôi phục được phiên chat: ${error.message}`);
         console.error("[Web Workflow Utility] Guild Chat connection failed.", error);
         throw error;
       });
@@ -1348,7 +1504,7 @@
           nickname: member.nickname,
           avatar,
         };
-        writeValue(PROFILE_STORAGE_KEY, profile);
+        await writeValue(PROFILE_STORAGE_KEY, profile);
         nicknameInput.value = "";
         inviteCodeInput.value = "";
         showChat(profile);
@@ -1421,9 +1577,6 @@
         onVisibilityChange(false);
       }
     });
-    retryButton.addEventListener("click", () => {
-      requestConnection().catch(() => {});
-    });
     joinForm.addEventListener("submit", (event) => {
       void joinGuild(event);
     });
@@ -1466,6 +1619,12 @@
       ) {
         emojiPicker.hidden = true;
         emojiButton.setAttribute("aria-expanded", "false");
+      }
+    });
+    shadow.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && !avatarPopover.hidden) {
+        event.preventDefault();
+        closeAvatarPicker(true);
       }
     });
     updateUnread();
