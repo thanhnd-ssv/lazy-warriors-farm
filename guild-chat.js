@@ -78,8 +78,18 @@
   const AUTH_REFRESH_URL =
     `https://securetoken.googleapis.com/v1/token?key=${FIREBASE_CONFIG.apiKey}`;
 
+  function withTimeout(promise, timeoutMs, message) {
+    let timeoutId;
+    const timeout = new Promise((resolve, reject) => {
+      timeoutId = global.setTimeout(() => reject(new Error(message)), timeoutMs);
+    });
+    return Promise.race([promise, timeout]).finally(() => {
+      global.clearTimeout(timeoutId);
+    });
+  }
+
   function requestJson(request, method, url, data, headers) {
-    return new Promise((resolve, reject) => {
+    return withTimeout(new Promise((resolve, reject) => {
       try {
         request({
           method,
@@ -139,7 +149,7 @@
       } catch (error) {
         reject(error);
       }
-    });
+    }), 25_000, "Firebase request timed out.");
   }
 
   function getChatBackgroundTheme(date) {
@@ -436,15 +446,23 @@
         .heading strong { color: var(--header-text); font-size: 15px; letter-spacing: .1px; }
         .connection { display: none; }
         .header-actions { display: flex; gap: 5px; }
-        .header-actions .update {
+        .header-actions .header-icon {
           display: grid; place-items: center;
           width: 32px; height: 32px; min-height: 32px; padding: 0;
           color: var(--close-text); background: var(--close-bg);
           border: 1.5px solid var(--close-border); border-radius: 10px;
-          font: 18px/1 system-ui, sans-serif; text-decoration: none;
+          font: 18px/1 system-ui, sans-serif;
         }
-        .header-actions .update[hidden] { display: none; }
-        .header-actions .update:hover { filter: brightness(.97); }
+        .header-actions .header-icon svg { width: 16px; height: 16px; }
+        .header-actions a.header-icon { text-decoration: none; }
+        .header-actions .header-icon:hover:not(:disabled) { filter: brightness(.97); }
+        .header-actions .reload[disabled] svg {
+          animation: chat-refresh-spin .8s linear infinite;
+        }
+        @keyframes chat-refresh-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) {
+          .header-actions .reload[disabled] svg { animation: none; }
+        }
         button, input { font: inherit; }
         button {
           min-height: 32px; padding: 5px 10px; color: #617153;
@@ -692,7 +710,20 @@
             <span class="connection">Chưa kết nối</span>
           </div>
           <div class="header-actions">
-            <a class="update" aria-label="Cập nhật userscript" title="Cập nhật userscript" target="_blank" rel="noopener noreferrer" hidden>↻</a>
+            <button type="button" class="header-icon reload" aria-label="Làm mới chat" title="Làm mới chat">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M20 7v5h-5"></path>
+                <path d="M4 17v-5h5"></path>
+                <path d="M5.6 9a7 7 0 0 1 11.6-2L20 12M4 12l2.8 5a7 7 0 0 0 11.6-2"></path>
+              </svg>
+            </button>
+            <a class="header-icon update" aria-label="Cập nhật userscript" title="Cập nhật userscript" target="_blank" rel="noopener noreferrer">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <path d="m7 10 5 5 5-5"></path>
+                <path d="M12 15V3"></path>
+              </svg>
+            </a>
             <button type="button" class="close" aria-label="Đóng chat">×</button>
           </div>
         </header>
@@ -771,6 +802,7 @@
     const updateLink = shadow.querySelector(".header-actions .update");
     updateLink.href = updateLinkUrl.href;
     updateLink.hidden = false;
+    const reloadButton = shadow.querySelector(".header-actions .reload");
     const launchButton = shadow.querySelector(".guild-chat-launch");
     const launchUnread = shadow.querySelector(".launch-unread");
     const content = shadow.querySelector(".content");
@@ -922,6 +954,7 @@
     let membership = null;
     let messagePolling = false;
     let connectionPromise = null;
+    let connectionAttempt = 0;
     let authSession = null;
     let currentIdToken = null;
     let idTokenExpiresAt = 0;
@@ -934,7 +967,11 @@
 
     async function readValue(key, fallback) {
       try {
-        const value = await getValue(key, fallback);
+        const value = await withTimeout(
+          Promise.resolve().then(() => getValue(key, fallback)),
+          10_000,
+          "Đọc phiên chat quá thời gian chờ.",
+        );
         return value === undefined ? fallback : value;
       } catch (error) {
         console.error("[Web Workflow Utility] Guild Chat storage read failed.", error);
@@ -944,7 +981,11 @@
 
     async function writeValue(key, value) {
       try {
-        await setValue(key, value);
+        await withTimeout(
+          Promise.resolve().then(() => setValue(key, value)),
+          10_000,
+          "Lưu phiên chat quá thời gian chờ.",
+        );
       } catch (error) {
         console.error("[Web Workflow Utility] Guild Chat storage write failed.", error);
         throw error;
@@ -1267,30 +1308,34 @@
 
     let lastMessagePollError = null;
 
+    async function fetchMessages() {
+      const messages = await databaseGet(
+        `guilds/${membership.guildId}/messages`,
+        {
+          orderBy: JSON.stringify("createdAt"),
+          limitToLast: String(MAX_HISTORY),
+        },
+      );
+      if (messages && typeof messages === "object" && !Array.isArray(messages)) {
+        const entries = Object.entries(messages).sort((first, second) => {
+          const firstTime = Number(first[1] && first[1].createdAt) || 0;
+          const secondTime = Number(second[1] && second[1].createdAt) || 0;
+          return firstTime - secondTime || first[0].localeCompare(second[0]);
+        });
+        for (const [key, message] of entries) {
+          appendMessage(key, message);
+        }
+      }
+      if (!initialMessagesLoaded) {
+        initialMessagesLoaded = true;
+        messagesList.scrollTop = messagesList.scrollHeight;
+      }
+    }
+
     async function pollMessages() {
       if (!messagePolling || !membership || !user) return;
       try {
-        const messages = await databaseGet(
-          `guilds/${membership.guildId}/messages`,
-          {
-            orderBy: JSON.stringify("createdAt"),
-            limitToLast: String(MAX_HISTORY),
-          },
-        );
-        if (messages && typeof messages === "object" && !Array.isArray(messages)) {
-          const entries = Object.entries(messages).sort((first, second) => {
-            const firstTime = Number(first[1] && first[1].createdAt) || 0;
-            const secondTime = Number(second[1] && second[1].createdAt) || 0;
-            return firstTime - secondTime || first[0].localeCompare(second[0]);
-          });
-          for (const [key, message] of entries) {
-            appendMessage(key, message);
-          }
-        }
-        if (!initialMessagesLoaded) {
-          initialMessagesLoaded = true;
-          messagesList.scrollTop = messagesList.scrollHeight;
-        }
+        await fetchMessages();
         connectionLabel.textContent = "Đã kết nối · làm mới mỗi 3 giây";
         if (lastMessagePollError) {
           setNotice(chatNotice, "");
@@ -1307,6 +1352,28 @@
 
       if (messagePolling) {
         global.setTimeout(() => void pollMessages(), MESSAGE_POLL_INTERVAL_MS);
+      }
+    }
+
+    async function reloadChat() {
+      if (reloadButton.disabled) return;
+      reloadButton.disabled = true;
+      reloadButton.setAttribute("aria-busy", "true");
+      try {
+        if (!membership || !user) await requestConnection();
+        if (!membership || !user) return;
+        await fetchMessages();
+        connectionLabel.textContent = "Đã kết nối · làm mới mỗi 3 giây";
+        setNotice(chatNotice, "");
+        lastMessagePollError = null;
+      } catch (error) {
+        if (!chatView.hidden) {
+          setNotice(chatNotice, `Làm mới chat thất bại: ${error.message}`);
+        }
+        console.error("[Web Workflow Utility] Guild Chat refresh failed.", error);
+      } finally {
+        reloadButton.disabled = false;
+        reloadButton.removeAttribute("aria-busy");
       }
     }
 
@@ -1352,8 +1419,9 @@
       return user;
     }
 
-    async function loadSavedMembership() {
+    async function loadSavedMembership(attempt) {
       const saved = await readValue(PROFILE_STORAGE_KEY, null);
+      if (attempt !== connectionAttempt) return false;
       if (
         !saved ||
         typeof saved !== "object" ||
@@ -1364,6 +1432,7 @@
       }
 
       const data = await databaseGet(memberPath(saved.guildId, user.uid));
+      if (attempt !== connectionAttempt) return false;
       if (!data || typeof data.nickname !== "string") {
         await writeValue(PROFILE_STORAGE_KEY, null);
         return false;
@@ -1376,6 +1445,7 @@
           : randomCharacterAvatar();
       if (!isCharacterAvatar(data.avatar)) {
         await databasePatch(memberPath(saved.guildId, user.uid), { avatar });
+        if (attempt !== connectionAttempt) return false;
       }
 
       const profile = {
@@ -1385,20 +1455,25 @@
         avatar,
       };
       await writeValue(PROFILE_STORAGE_KEY, { ...profile, uid: user.uid });
+      if (attempt !== connectionAttempt) return false;
       showChat(profile);
       return true;
     }
 
-    async function initializeConnection() {
+    async function initializeConnection(attempt) {
       connectionLoading.hidden = false;
+      connectionLoading.textContent = "Đang kiểm tra phiên đăng nhập...";
       joinForm.hidden = true;
       chatView.hidden = true;
       connectionLabel.textContent = "Đang kết nối...";
       await signIn();
+      if (attempt !== connectionAttempt) return;
       if (!user) throw new Error("Firebase Authentication chưa cấp UID.");
       connectionLabel.textContent = "Đã xác thực";
 
-      const hasMembership = await loadSavedMembership();
+      connectionLoading.textContent = "Đang khôi phục hồ sơ thành viên...";
+      const hasMembership = await loadSavedMembership(attempt);
+      if (attempt !== connectionAttempt) return;
       if (!hasMembership) {
         connectionLoading.hidden = true;
         joinForm.hidden = false;
@@ -1409,13 +1484,24 @@
 
     function requestConnection() {
       if (connectionPromise) return connectionPromise;
-      connectionPromise = initializeConnection().catch((error) => {
-        connectionPromise = null;
-        connectionLoading.hidden = true;
-        joinForm.hidden = false;
-        chatView.hidden = true;
-        connectionLabel.textContent = "Lỗi kết nối";
-        setNotice(joinNotice, `Không khôi phục được phiên chat: ${error.message}`);
+      const attempt = ++connectionAttempt;
+      connectionPromise = withTimeout(
+        initializeConnection(attempt),
+        30_000,
+        "Khôi phục phiên chat quá thời gian chờ. Mở lại chat để thử lại.",
+      ).catch((error) => {
+        if (attempt === connectionAttempt) {
+          connectionAttempt += 1;
+          connectionPromise = null;
+          connectionLoading.hidden = true;
+          joinForm.hidden = false;
+          chatView.hidden = true;
+          connectionLabel.textContent = "Lỗi kết nối";
+          setNotice(
+            joinNotice,
+            `Không khôi phục được phiên chat: ${error.message}`,
+          );
+        }
         console.error("[Web Workflow Utility] Guild Chat connection failed.", error);
         throw error;
       });
@@ -1569,6 +1655,9 @@
         }
         requestConnection().catch(() => {});
       }
+    });
+    reloadButton.addEventListener("click", () => {
+      void reloadChat();
     });
     shadow.querySelector(".close").addEventListener("click", () => {
       panel.hidden = true;
