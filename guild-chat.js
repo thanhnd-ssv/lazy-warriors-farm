@@ -313,6 +313,17 @@
           font-size: 24px; line-height: 1; cursor: pointer;
         }
         .guild-chat-launch[hidden] { display: none; }
+        .guild-chat-launch[aria-busy="true"] { opacity: .8; cursor: wait; }
+        .guild-chat-launch[aria-busy="true"]::after {
+          position: absolute; inset: -4px; content: "";
+          border: 2px solid transparent; border-top-color: #fff;
+          border-right-color: #fff; border-radius: 50%;
+          animation: launcher-spin .8s linear infinite;
+        }
+        @keyframes launcher-spin { to { transform: rotate(360deg); } }
+        @media (prefers-reduced-motion: reduce) {
+          .guild-chat-launch[aria-busy="true"]::after { animation: none; }
+        }
         .launch-unread {
           position: absolute; top: -3px; right: -4px;
           display: grid; place-items: center; min-width: 20px; height: 20px;
@@ -688,7 +699,8 @@
         .toast[hidden] { display: none; }
         @media (max-width: 480px) {
           :host { right: 6px !important; bottom: 6px !important; }
-          .guild-chat-launch { width: 50px; height: 50px; min-height: 50px; }
+          .guild-chat-launch { width: 45px; height: 40px; min-height: 40px; }
+          .guild-chat-launch > span:first-child { font-size: 20px; }
           .panel {
             width: min(345px, calc(100vw - 12px));
             height: min(450px, calc(100vh - 12px));
@@ -1643,21 +1655,24 @@
       }
     }
 
-    launchButton.addEventListener("click", () => {
+    function showChatPanel() {
       panel.hidden = false;
       launchButton.hidden = true;
-      if (!panel.hidden) {
-        unreadCount = 0;
-        updateUnread();
-        if (typeof onVisibilityChange === "function") {
-          onVisibilityChange(true);
-        }
-        requestConnection()
-          .then(() => {
-            if (!panel.hidden) startMessageListener();
-          })
-          .catch(() => {});
+      launchButton.disabled = false;
+      launchButton.removeAttribute("aria-busy");
+      if (membership && user) startMessageListener();
+    }
+
+    launchButton.addEventListener("click", () => {
+      if (launchButton.disabled) return;
+      launchButton.disabled = true;
+      launchButton.setAttribute("aria-busy", "true");
+      unreadCount = 0;
+      updateUnread();
+      if (typeof onVisibilityChange === "function") {
+        onVisibilityChange(true);
       }
+      requestConnection().then(showChatPanel, showChatPanel);
     });
     reloadButton.addEventListener("click", () => {
       void reloadChat();
