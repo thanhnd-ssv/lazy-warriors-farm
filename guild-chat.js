@@ -1796,13 +1796,44 @@
         suppressLauncherClick = false;
         return;
       }
+
+      const anchorRect = host.getBoundingClientRect();
+      const viewport = getViewportSize();
+
       panel.hidden = false;
       launchButton.hidden = true;
       unreadCount = 0;
       updateUnread();
+
       global.requestAnimationFrame(() => {
+        const panelRect = panel.getBoundingClientRect();
+        if (panelRect.width && panelRect.height) {
+          const spaceBelow = viewport.offsetTop + viewport.height - anchorRect.bottom;
+          const spaceAbove = anchorRect.top - viewport.offsetTop;
+          const spaceRight = viewport.offsetLeft + viewport.width - anchorRect.right;
+          const spaceLeft = anchorRect.right - viewport.offsetLeft;
+
+          let left = anchorRect.left;
+          let top = anchorRect.top;
+
+          if (
+            spaceBelow < panelRect.height &&
+            spaceAbove > spaceBelow
+          ) {
+            top = anchorRect.bottom - panelRect.height;
+          }
+          if (
+            spaceRight < panelRect.width &&
+            spaceLeft > spaceRight
+          ) {
+            left = anchorRect.right - panelRect.width;
+          }
+
+          setHostPosition(left, top);
+        }
         clampHostToViewport();
       });
+
       if (typeof onVisibilityChange === "function") {
         onVisibilityChange(true);
       }
@@ -1812,10 +1843,34 @@
       void reloadChat();
     });
     shadow.querySelector(".close").addEventListener("click", () => {
+      const panelRect = host.getBoundingClientRect();
       panel.hidden = true;
       launchButton.hidden = false;
       global.requestAnimationFrame(() => {
+        const buttonRect = launchButton.getBoundingClientRect();
+        if (buttonRect.width && buttonRect.height && panelRect.width) {
+          // Keep launcher near the same corner area after closing a repositioned panel.
+          const viewport = getViewportSize();
+          const preferRight =
+            panelRect.left + panelRect.width / 2 >
+            viewport.offsetLeft + viewport.width / 2;
+          const preferBottom =
+            panelRect.top + panelRect.height / 2 >
+            viewport.offsetTop + viewport.height / 2;
+          let left = panelRect.left;
+          let top = panelRect.top;
+          if (preferRight) {
+            left = panelRect.right - buttonRect.width;
+          }
+          if (preferBottom) {
+            top = panelRect.bottom - buttonRect.height;
+          }
+          setHostPosition(left, top);
+        }
         clampHostToViewport();
+        if (host.style.left !== "auto" || host.style.top !== "auto") {
+          saveLauncherPosition();
+        }
       });
       if (typeof onVisibilityChange === "function") {
         onVisibilityChange(false);
