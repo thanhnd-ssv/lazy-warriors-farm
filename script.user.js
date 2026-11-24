@@ -25,16 +25,56 @@
   "use strict";
 
   if (window.top !== window.self) return;
+
+  const gmGetValue =
+    typeof globalThis.GM_getValue === "function"
+      ? globalThis.GM_getValue.bind(globalThis)
+      : typeof globalThis.GM?.getValue === "function"
+        ? (key, fallback) => globalThis.GM.getValue(key, fallback)
+        : (key, fallback) => {
+            try {
+              const raw = localStorage.getItem(String(key));
+              return raw === null ? fallback : JSON.parse(raw);
+            } catch (_error) {
+              return fallback;
+            }
+          };
+
+  const gmSetValue =
+    typeof globalThis.GM_setValue === "function"
+      ? globalThis.GM_setValue.bind(globalThis)
+      : typeof globalThis.GM?.setValue === "function"
+        ? (key, value) => globalThis.GM.setValue(key, value)
+        : (key, value) => {
+            try {
+              localStorage.setItem(String(key), JSON.stringify(value));
+            } catch (_error) {}
+          };
+
+  const gmRequest =
+    typeof globalThis.GM_xmlhttpRequest === "function"
+      ? globalThis.GM_xmlhttpRequest.bind(globalThis)
+      : typeof globalThis.GM?.xmlHttpRequest === "function"
+        ? (details) => globalThis.GM.xmlHttpRequest(details)
+        : typeof globalThis.GM_xmlHttpRequest === "function"
+          ? globalThis.GM_xmlHttpRequest.bind(globalThis)
+          : null;
+
   if (!globalThis.GuildChatModule) {
     console.error("[Web Workflow Utility] Guild Chat module did not load.");
     return;
   }
 
+  if (typeof gmRequest !== "function") {
+    console.error("[Web Workflow Utility] GM_xmlhttpRequest is unavailable.");
+    return;
+  }
+
   try {
     globalThis.GuildChatModule.mount({
-      getValue: (key, fallback) => GM_getValue(key, fallback),
-      setValue: (key, value) => GM_setValue(key, value),
-      request: (options) => GM_xmlhttpRequest(options),
+      getValue: (key, fallback) => gmGetValue(key, fallback),
+      setValue: (key, value) => gmSetValue(key, value),
+      request: (options) => gmRequest(options),
       updateUrl:
         "https://raw.githubusercontent.com/thanhnd-ssv/lazy-warriors-farm/refs/heads/main/script.user.js",
     });

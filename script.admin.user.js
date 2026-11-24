@@ -27,6 +27,36 @@
 
   if (window.top !== window.self) return;
 
+  const GM_getValue =
+    typeof globalThis.GM_getValue === "function"
+      ? globalThis.GM_getValue.bind(globalThis)
+      : (key, fallback) => {
+          try {
+            const raw = localStorage.getItem(String(key));
+            return raw === null ? fallback : JSON.parse(raw);
+          } catch (_error) {
+            return fallback;
+          }
+        };
+
+  const GM_setValue =
+    typeof globalThis.GM_setValue === "function"
+      ? globalThis.GM_setValue.bind(globalThis)
+      : (key, value) => {
+          try {
+            localStorage.setItem(String(key), JSON.stringify(value));
+          } catch (_error) {}
+        };
+
+  const GM_xmlhttpRequest =
+    typeof globalThis.GM_xmlhttpRequest === "function"
+      ? globalThis.GM_xmlhttpRequest.bind(globalThis)
+      : typeof globalThis.GM?.xmlHttpRequest === "function"
+        ? (details) => globalThis.GM.xmlHttpRequest(details)
+        : typeof globalThis.GM_xmlHttpRequest === "function"
+          ? globalThis.GM_xmlHttpRequest.bind(globalThis)
+          : null;
+
   const DEFAULT_CHECK_INTERVAL_MS = 1_000;
   const NEIGHBOR_RETRY_COOLDOWN_MS = 30_000;
   const DAYTIME_RESTRICTION_START_MINUTE = 8 * 60 + 30;

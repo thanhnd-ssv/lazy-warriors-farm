@@ -311,6 +311,7 @@
           border: 2px solid #fff; border-radius: 50%;
           box-shadow: 0 5px 16px #63344c55;
           font-size: 24px; line-height: 1; cursor: pointer;
+          touch-action: none; user-select: none; -webkit-user-select: none;
         }
         .guild-chat-launch[hidden] { display: none; }
         .launch-unread {
@@ -687,8 +688,7 @@
         }
         .toast[hidden] { display: none; }
         @media (max-width: 480px) {
-          :host { right: 6px !important; bottom: 6px !important; }
-          .guild-chat-launch { width: 45px; height: 40px; min-height: 40px; }
+          .guild-chat-launch { width: 45px; height: 45px; min-height: 45px; }
           .guild-chat-launch > span:first-child { font-size: 20px; }
           .panel {
             width: min(345px, calc(100vw - 12px));
@@ -829,6 +829,156 @@
     const sendButton = shadow.querySelector(".send-button");
     const chatNotice = shadow.querySelector(".chat-notice");
     const toast = shadow.querySelector(".toast");
+
+    const HOST_MARGIN_PX = 6;
+    let suppressLauncherClick = false;
+
+    function getViewportSize() {
+      const viewport = global.visualViewport;
+      return {
+        width: viewport ? viewport.width : global.innerWidth,
+        height: viewport ? viewport.height : global.innerHeight,
+        offsetLeft: viewport ? viewport.offsetLeft : 0,
+        offsetTop: viewport ? viewport.offsetTop : 0,
+      };
+    }
+
+    function setHostPosition(left, top) {
+      host.style.left = `${Math.round(left)}px`;
+      host.style.top = `${Math.round(top)}px`;
+      host.style.right = "auto";
+      host.style.bottom = "auto";
+    }
+
+    function clampHostToViewport() {
+      const rect = host.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const viewport = getViewportSize();
+      const minLeft = viewport.offsetLeft + HOST_MARGIN_PX;
+      const minTop = viewport.offsetTop + HOST_MARGIN_PX;
+      const maxLeft = Math.max(
+        minLeft,
+        viewport.offsetLeft + viewport.width - rect.width - HOST_MARGIN_PX,
+      );
+      const maxTop = Math.max(
+        minTop,
+        viewport.offsetTop + viewport.height - rect.height - HOST_MARGIN_PX,
+      );
+      const left = Math.min(Math.max(rect.left, minLeft), maxLeft);
+      const top = Math.min(Math.max(rect.top, minTop), maxTop);
+      setHostPosition(left, top);
+    }
+
+    function saveLauncherPosition() {
+      const rect = host.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      void writeValue(LAUNCHER_POSITION_STORAGE_KEY, {
+        left: Math.round(rect.left),
+        top: Math.round(rect.top),
+      });
+    }
+
+    void (async () => {
+      try {
+        const saved = await readValue(LAUNCHER_POSITION_STORAGE_KEY, null);
+        if (
+          saved &&
+          Number.isFinite(saved.left) &&
+          Number.isFinite(saved.top)
+        ) {
+          setHostPosition(saved.left, saved.top);
+          global.requestAnimationFrame(() => {
+            clampHostToViewport();
+          });
+        }
+      } catch (_error) {
+        // Ignore invalid or unavailable stored launcher position.
+      }
+    })();
+
+    global.addEventListener("resize", () => {
+      if (host.style.left !== "auto" || host.style.top !== "auto") {
+        clampHostToViewport();
+      }
+    });
+    if (global.visualViewport) {
+      global.visualViewport.addEventListener("resize", () => {
+        if (host.style.left !== "auto" || host.style.top !== "auto") {
+          clampHostToViewport();
+        }
+      });
+    }
+
+    let launcherDragState = null;
+
+    function stopLauncherDrag(event) {
+      if (!launcherDragState) return;
+      if (
+        event &&
+        launcherDragState.pointerId != null &&
+        event.pointerId !== launcherDragState.pointerId
+      ) {
+        return;
+      }
+      const { moved, pointerId } = launcherDragState;
+      launcherDragState = null;
+      if (launchButton.hasPointerCapture?.(pointerId)) {
+        launchButton.releasePointerCapture(pointerId);
+      }
+      launchButton.style.cursor = "";
+      if (moved) {
+        suppressLauncherClick = true;
+        global.setTimeout(() => {
+          suppressLauncherClick = false;
+        }, 0);
+        clampHostToViewport();
+        saveLauncherPosition();
+      }
+    }
+
+    launchButton.addEventListener("pointerdown", (event) => {
+      if (event.button != null && event.button !== 0) return;
+      const rect = host.getBoundingClientRect();
+      launcherDragState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        originLeft: rect.left,
+        originTop: rect.top,
+        moved: false,
+      };
+      if (launchButton.setPointerCapture) {
+        try {
+          launchButton.setPointerCapture(event.pointerId);
+        } catch (_error) {
+          // Ignore pointer capture failures on unsupported platforms.
+        }
+      }
+    });
+
+    launchButton.addEventListener("pointermove", (event) => {
+      if (
+        !launcherDragState ||
+        event.pointerId !== launcherDragState.pointerId
+      ) {
+        return;
+      }
+      const deltaX = event.clientX - launcherDragState.startX;
+      const deltaY = event.clientY - launcherDragState.startY;
+      if (!launcherDragState.moved) {
+        if (Math.hypot(deltaX, deltaY) < 6) return;
+        launcherDragState.moved = true;
+        launchButton.style.cursor = "grabbing";
+      }
+      setHostPosition(
+        launcherDragState.originLeft + deltaX,
+        launcherDragState.originTop + deltaY,
+      );
+      event.preventDefault();
+    });
+
+    launchButton.addEventListener("pointerup", stopLauncherDrag);
+    launchButton.addEventListener("pointercancel", stopLauncherDrag);
 
     let selectedAvatar = null;
     function updateAvatarTrigger() {
@@ -1642,10 +1792,17 @@
     }
 
     launchButton.addEventListener("click", () => {
+      if (suppressLauncherClick) {
+        suppressLauncherClick = false;
+        return;
+      }
       panel.hidden = false;
       launchButton.hidden = true;
       unreadCount = 0;
       updateUnread();
+      global.requestAnimationFrame(() => {
+        clampHostToViewport();
+      });
       if (typeof onVisibilityChange === "function") {
         onVisibilityChange(true);
       }
@@ -1657,6 +1814,9 @@
     shadow.querySelector(".close").addEventListener("click", () => {
       panel.hidden = true;
       launchButton.hidden = false;
+      global.requestAnimationFrame(() => {
+        clampHostToViewport();
+      });
       if (typeof onVisibilityChange === "function") {
         onVisibilityChange(false);
       }
