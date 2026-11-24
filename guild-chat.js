@@ -832,6 +832,7 @@
 
     const HOST_MARGIN_PX = 6;
     let suppressLauncherClick = false;
+    let launcherHostPlacement = null;
 
     function getViewportSize() {
       const viewport = global.visualViewport;
@@ -876,6 +877,30 @@
         left: Math.round(rect.left),
         top: Math.round(rect.top),
       });
+    }
+
+    function captureLauncherHostPlacement() {
+      return {
+        left: host.style.left,
+        top: host.style.top,
+        right: host.style.right,
+        bottom: host.style.bottom,
+      };
+    }
+
+    function restoreLauncherHostPlacement(placement) {
+      if (!placement) return;
+      host.style.left = placement.left || "";
+      host.style.top = placement.top || "";
+      host.style.right = placement.right || "";
+      host.style.bottom = placement.bottom || "";
+    }
+
+    function moveHostToDefaultPanelPosition() {
+      host.style.left = "auto";
+      host.style.top = "auto";
+      host.style.right = "12px";
+      host.style.bottom = "12px";
     }
 
     void (async () => {
@@ -1797,40 +1822,14 @@
         return;
       }
 
-      const anchorRect = host.getBoundingClientRect();
-      const viewport = getViewportSize();
-
+      launcherHostPlacement = captureLauncherHostPlacement();
+      moveHostToDefaultPanelPosition();
       panel.hidden = false;
       launchButton.hidden = true;
       unreadCount = 0;
       updateUnread();
 
       global.requestAnimationFrame(() => {
-        const panelRect = panel.getBoundingClientRect();
-        if (panelRect.width && panelRect.height) {
-          const spaceBelow = viewport.offsetTop + viewport.height - anchorRect.bottom;
-          const spaceAbove = anchorRect.top - viewport.offsetTop;
-          const spaceRight = viewport.offsetLeft + viewport.width - anchorRect.right;
-          const spaceLeft = anchorRect.right - viewport.offsetLeft;
-
-          let left = anchorRect.left;
-          let top = anchorRect.top;
-
-          if (
-            spaceBelow < panelRect.height &&
-            spaceAbove > spaceBelow
-          ) {
-            top = anchorRect.bottom - panelRect.height;
-          }
-          if (
-            spaceRight < panelRect.width &&
-            spaceLeft > spaceRight
-          ) {
-            left = anchorRect.right - panelRect.width;
-          }
-
-          setHostPosition(left, top);
-        }
         clampHostToViewport();
       });
 
@@ -1843,34 +1842,12 @@
       void reloadChat();
     });
     shadow.querySelector(".close").addEventListener("click", () => {
-      const panelRect = host.getBoundingClientRect();
       panel.hidden = true;
       launchButton.hidden = false;
+      restoreLauncherHostPlacement(launcherHostPlacement);
+      launcherHostPlacement = null;
       global.requestAnimationFrame(() => {
-        const buttonRect = launchButton.getBoundingClientRect();
-        if (buttonRect.width && buttonRect.height && panelRect.width) {
-          // Keep launcher near the same corner area after closing a repositioned panel.
-          const viewport = getViewportSize();
-          const preferRight =
-            panelRect.left + panelRect.width / 2 >
-            viewport.offsetLeft + viewport.width / 2;
-          const preferBottom =
-            panelRect.top + panelRect.height / 2 >
-            viewport.offsetTop + viewport.height / 2;
-          let left = panelRect.left;
-          let top = panelRect.top;
-          if (preferRight) {
-            left = panelRect.right - buttonRect.width;
-          }
-          if (preferBottom) {
-            top = panelRect.bottom - buttonRect.height;
-          }
-          setHostPosition(left, top);
-        }
         clampHostToViewport();
-        if (host.style.left !== "auto" || host.style.top !== "auto") {
-          saveLauncherPosition();
-        }
       });
       if (typeof onVisibilityChange === "function") {
         onVisibilityChange(false);
