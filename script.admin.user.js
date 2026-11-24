@@ -48,14 +48,88 @@
           } catch (_error) {}
         };
 
-  const GM_xmlhttpRequest =
-    typeof globalThis.GM_xmlhttpRequest === "function"
-      ? globalThis.GM_xmlhttpRequest.bind(globalThis)
-      : typeof globalThis.GM?.xmlHttpRequest === "function"
-        ? (details) => globalThis.GM.xmlHttpRequest(details)
+  function createGmRequestFallback() {
+    if (typeof globalThis.fetch !== "function") return null;
+    return (details = {}) => {
+      const controller =
+        typeof globalThis.AbortController === "function"
+          ? new globalThis.AbortController()
+          : null;
+      let timedOut = false;
+      let timeoutId = null;
+      const timeoutMs = Number(details.timeout);
+
+      if (controller && Number.isFinite(timeoutMs) && timeoutMs > 0) {
+        timeoutId = globalThis.setTimeout(() => {
+          timedOut = true;
+          controller.abort();
+        }, timeoutMs);
+      }
+
+      const run = async () => {
+        const init = {
+          method: details.method || "GET",
+          headers: details.headers || undefined,
+        };
+        if (controller) init.signal = controller.signal;
+        if (details.data !== undefined && init.method !== "GET" && init.method !== "HEAD") {
+          init.body = details.data;
+        }
+
+        const response = await globalThis.fetch(details.url, init);
+        const status = response.status;
+        let responseText = "";
+        let responseData;
+
+        if (details.responseType === "arraybuffer") {
+          responseData = await response.arrayBuffer();
+          responseText = "";
+        } else {
+          responseText = await response.text();
+          responseData = responseText;
+        }
+
+        if (typeof details.onload === "function") {
+          details.onload({
+            status,
+            statusText: response.statusText || "",
+            responseText,
+            response: responseData,
+            readyState: 4,
+            finalUrl: response.url || details.url,
+          });
+        }
+      };
+
+      Promise.resolve()
+        .then(run)
+        .catch((error) => {
+          if (timedOut) {
+            if (typeof details.ontimeout === "function") details.ontimeout(error);
+            return;
+          }
+          if (typeof details.onerror === "function") details.onerror(error);
+        })
+        .finally(() => {
+          if (timeoutId != null) globalThis.clearTimeout(timeoutId);
+        });
+    };
+  }
+
+  const GM_xmlhttpRequest = (() => {
+    const gmObject = typeof GM !== "undefined" ? GM : globalThis.GM;
+    const native =
+      typeof globalThis.GM_xmlhttpRequest === "function"
+        ? globalThis.GM_xmlhttpRequest.bind(globalThis)
         : typeof globalThis.GM_xmlHttpRequest === "function"
           ? globalThis.GM_xmlHttpRequest.bind(globalThis)
-          : null;
+          : gmObject && typeof gmObject.xmlHttpRequest === "function"
+            ? (details) => gmObject.xmlHttpRequest(details)
+            : gmObject && typeof gmObject.GM_xmlhttpRequest === "function"
+              ? (details) => gmObject.GM_xmlhttpRequest(details)
+              : null;
+    return native || createGmRequestFallback();
+  })();
 
   const DEFAULT_CHECK_INTERVAL_MS = 1_000;
   const NEIGHBOR_RETRY_COOLDOWN_MS = 30_000;
